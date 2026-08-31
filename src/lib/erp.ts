@@ -301,7 +301,7 @@ export async function getGreyStock(): Promise<GreyStockRow[]> {
      JOIN master.items it ON it.id = m.item_id
      JOIN inventory.grey_lots gl ON gl.id = m.lot_id
      GROUP BY l.id, l.location_code, l.location_name, it.item_code, it.item_name,
-              gl.lot_number, m.item_id, m.lot_id
+              gl.lot_number, gl.purchase_rate, m.item_id, m.lot_id
      HAVING inventory.get_location_stock(m.item_id, m.lot_id, l.id) > 0
      ORDER BY l.location_code, gl.lot_number`,
   );
