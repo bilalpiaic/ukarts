@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "node scripts/db-setup.mjs --if-configured && next build",
     "start": "next start",
     "lint": "next lint",
     "db:setup": "node scripts/db-setup.mjs",

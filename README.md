@@ -152,6 +152,47 @@ Reconciliation → Processing Bill → Issue to Stitcher → Stitching → Produ
 Receipt → Finished Goods → Sale → Accounting & Profitability
 ```
 
+## Deployment (Vercel + Neon)
+
+The app is deploy-ready for **Vercel** with a **Neon** Postgres database, targeting
+`https://ukarts.vercel.app`.
+
+- `vercel.json` sets the build command to `npm run vercel-build`.
+- `npm run vercel-build` runs `db-setup.mjs --if-configured` (applies the schema +
+  seed to `DATABASE_URL` when it is set, idempotently) and then `next build`. The
+  first build before a database is attached simply skips DB setup, so it never
+  fails.
+- The DB layer enables TLS automatically for managed providers (Neon, etc.).
+
+### Option A — Vercel dashboard (recommended, no CLI)
+
+1. In Vercel, **Add New → Project** and import `bilalpiaic/ukarts`. Set the
+   **Project Name** to `ukarts` so the production URL is `ukarts.vercel.app`.
+2. Open the project's **Storage** tab → **Create Database → Neon** (Marketplace).
+   This provisions Neon and injects `DATABASE_URL` into the project automatically.
+3. **Redeploy**. `vercel-build` applies the schema + seed to Neon during the build,
+   then the app goes live at `https://ukarts.vercel.app`.
+
+Every push to `main` then auto-deploys.
+
+### Option B — Vercel CLI
+
+```bash
+npm i -g vercel
+vercel login
+vercel link                                  # create/link project named "ukarts"
+vercel integration add neon                  # provision Neon, injects DATABASE_URL
+vercel --prod                                # build (applies schema+seed) + deploy
+```
+
+To use an existing/external Neon database instead of the Marketplace, set the
+connection string yourself:
+
+```bash
+vercel env add DATABASE_URL production        # paste the Neon pooled connection string
+vercel --prod
+```
+
 ## Roadmap
 
 Remaining modules from the design document: sales orders & allocation,
