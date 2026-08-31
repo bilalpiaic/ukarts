@@ -10,13 +10,31 @@ import pg from "pg";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
+const reset = process.argv.includes("--reset");
+const ifConfigured = process.argv.includes("--if-configured");
+
+// In --if-configured mode (used by the Vercel build) we only run when an
+// explicit DATABASE_URL is present, so a first build before the database is
+// provisioned still succeeds.
+if (ifConfigured && !process.env.DATABASE_URL) {
+  console.log("DATABASE_URL not set; skipping schema setup.");
+  process.exit(0);
+}
+
 const connectionString =
   process.env.DATABASE_URL ?? "postgres://ukarts:ukarts@localhost:5432/ukarts";
 
-const reset = process.argv.includes("--reset");
+function requiresSsl(cs) {
+  return /sslmode=require|neon\.tech|pooler\.|supabase|amazonaws|render\.com/i.test(
+    cs,
+  );
+}
 
 async function main() {
-  const client = new pg.Client({ connectionString });
+  const client = new pg.Client({
+    connectionString,
+    ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
+  });
   await client.connect();
   try {
     if (reset) {

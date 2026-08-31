@@ -5,11 +5,21 @@ const globalForPg = globalThis as unknown as { pgPool?: Pool };
 const connectionString =
   process.env.DATABASE_URL ?? "postgres://ukarts:ukarts@localhost:5432/ukarts";
 
+/** Managed Postgres providers (Neon, Supabase, RDS, …) require TLS. */
+function requiresSsl(cs: string): boolean {
+  return /sslmode=require|neon\.tech|pooler\.|supabase|amazonaws|render\.com/i.test(
+    cs,
+  );
+}
+
 export const pool =
   globalForPg.pgPool ??
   new Pool({
     connectionString,
     max: 5,
+    ssl: requiresSsl(connectionString)
+      ? { rejectUnauthorized: false }
+      : undefined,
   });
 
 if (process.env.NODE_ENV !== "production") {
