@@ -24,18 +24,43 @@ function initialValue(f: Field): string {
   return "";
 }
 
+const SUMMARY_KEYS: { key: string; label: string; money?: boolean }[] = [
+  { key: "soNumber", label: "SO" },
+  { key: "poNumber", label: "PO" },
+  { key: "amount", label: "amount", money: true },
+  { key: "issuedValue", label: "issued value", money: true },
+  { key: "processedValue", label: "grey consumed", money: true },
+  { key: "shortageValue", label: "shortage", money: true },
+  { key: "netPayable", label: "net payable", money: true },
+  { key: "shortageRecovery", label: "recovery", money: true },
+  { key: "totalGreyRequired", label: "grey required", money: true },
+];
+
+function summarize(data: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const s of SUMMARY_KEYS) {
+    const v = data[s.key];
+    if (v === undefined || v === null) continue;
+    const text = s.money
+      ? Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : String(v);
+    parts.push(`${s.label} ${text}`);
+  }
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
 export function ActionForm({
   action,
   title,
   submitLabel,
   fields,
-  successMessage,
+  successText,
 }: {
   action: string;
   title: string;
   submitLabel: string;
   fields: Field[];
-  successMessage?: (data: Record<string, unknown>) => string;
+  successText?: string;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -73,7 +98,7 @@ export function ActionForm({
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       setMsg({
         kind: "ok",
-        text: successMessage ? successMessage(data) : "Posted successfully.",
+        text: `${successText ?? "Posted successfully."}${summarize(data)}`,
       });
       router.refresh();
     } catch (err) {

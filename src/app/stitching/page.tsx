@@ -33,7 +33,7 @@ export default async function Stitching() {
             action="issue-to-stitcher"
             title="Issue Processed Cloth to Stitcher"
             submitLabel="Issue to Stitcher"
-            successMessage={() => "Processed cloth issued to stitcher (custody move)."}
+            successText="Processed cloth issued to stitcher (custody move)."
             fields={[
               { name: "productionOrderId", label: "Production order", type: "select", options: poOptions },
               { name: "stitcherCode", label: "Stitcher", type: "select", options: stitchers.map((s) => ({ value: s.party_code, label: s.party_name })) },
@@ -49,7 +49,7 @@ export default async function Stitching() {
             action="receive-stitching"
             title="Receive Stitching (Finished Goods)"
             submitLabel="Post Stitching Receipt"
-            successMessage={() => "Finished goods received into inventory."}
+            successText="Finished goods received into inventory."
             fields={[
               { name: "stitchingOrderId", label: "Stitching order", type: "select", options: stitchOptions },
               { name: "finishedItemCode", label: "Finished item", type: "select", options: finishedOptions },
@@ -68,7 +68,7 @@ export default async function Stitching() {
             action="stitching-bill"
             title="Stitching Bill"
             submitLabel="Post Stitching Bill"
-            successMessage={() => "Stitching bill posted (Dr Stitching Cost / Cr Stitcher Payable)."}
+            successText="Stitching bill posted (Dr Stitching Cost / Cr Stitcher Payable)."
             fields={[
               { name: "stitchingOrderId", label: "Stitching order", type: "select", options: stitchOptions },
               { name: "quantity", label: "Quantity (pcs)", type: "number", default: "980", step: "1" },

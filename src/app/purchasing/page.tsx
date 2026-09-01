@@ -26,7 +26,7 @@ export default async function Purchasing() {
             action="owner-investment"
             title="Record Owner Investment"
             submitLabel="Record Owner Investment"
-            successMessage={() => "Posted balanced journal entry."}
+            successText="Posted balanced journal entry."
             fields={[
               { name: "amount", label: "Amount (Dr Cash / Cr Owner Investment)", type: "number", default: "1000000", step: "0.01" },
               { name: "date", label: "Date", type: "date" },
@@ -39,7 +39,7 @@ export default async function Purchasing() {
             action="grey-purchase"
             title="Record Grey Purchase"
             submitLabel="Record Grey Purchase"
-            successMessage={(d) => `Purchase posted (amount ${money(Number(d.amount))}); grey lot created.`}
+            successText="Grey purchase posted; grey lot created."
             fields={[
               {
                 name: "supplierId",

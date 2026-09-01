@@ -8,7 +8,7 @@ import {
   getProductionOrders,
   getSaleOrders,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { qty } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function Processing() {
             action="issue-to-processor"
             title="Issue Grey to Processor"
             submitLabel="Issue to Processor"
-            successMessage={(d) => `Issued (value ${money(Number(d.issuedValue))}). Custody moved to processor.`}
+            successText="Issued to processor (custody move)."
             fields={[
               { name: "productionOrderId", label: "Production order", type: "select", options: poOptions },
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
@@ -56,7 +56,7 @@ export default async function Processing() {
             action="receive-processing"
             title="Receive Processing + Reconcile Shortage"
             submitLabel="Post Receipt"
-            successMessage={(d) => `Received. Grey consumed ${money(Number(d.processedValue))}, shortage ${money(Number(d.shortageValue))}.`}
+            successText="Processing received & reconciled."
             fields={[
               { name: "processingOrderLotId", label: "Issued lot", type: "select", options: openLotOptions },
               { name: "processedItemCode", label: "Processed item", type: "select", options: processedItems.map((i) => ({ value: i.item_code, label: i.item_name })) },
@@ -83,7 +83,7 @@ export default async function Processing() {
             action="processing-bill"
             title="Processing Bill"
             submitLabel="Post Processing Bill"
-            successMessage={(d) => `Bill posted. Net payable ${money(Number(d.netPayable))} (recovery ${money(Number(d.shortageRecovery))}).`}
+            successText="Processing bill posted."
             fields={[
               { name: "processingOrderId", label: "Processing order", type: "select", options: procOrderOptions },
               { name: "quantity", label: "Processed quantity (m)", type: "number", default: "4900", step: "0.0001" },

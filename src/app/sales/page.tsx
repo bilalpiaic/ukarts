@@ -31,7 +31,7 @@ export default async function Sales() {
             action="dispatch-sale"
             title="Dispatch Sale"
             submitLabel="Post Sale"
-            successMessage={(d) => `Sale posted (${money(Number(d.amount))}). Finished goods dispatched.`}
+            successText="Sale posted. Finished goods dispatched."
             fields={[
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "finishedItemCode", label: "Finished item", type: "select", options: finishedItems.map((f) => ({ value: f.item_code, label: f.item_name })) },

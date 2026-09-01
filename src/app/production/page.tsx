@@ -38,7 +38,7 @@ export default async function Production() {
             action="sale-order"
             title="Create Sale Order"
             submitLabel="Create Sale Order"
-            successMessage={(d) => `Sale order ${d.soNumber} created (${money(Number(d.amount))}).`}
+            successText="Sale order created."
             fields={[
               { name: "buyerCode", label: "Customer", type: "select", options: customers.map((c) => ({ value: c.party_code, label: c.party_name })) },
               { name: "itemCode", label: "Finished item", type: "select", options: finished.map((f) => ({ value: f.item_code, label: f.item_name })) },
@@ -55,7 +55,7 @@ export default async function Production() {
             action="production-order"
             title="Create Production Order"
             submitLabel="Create Production Order"
-            successMessage={(d) => `${d.poNumber} created; grey required ${qty(Number(d.totalGreyRequired))} m.`}
+            successText="Production order created."
             fields={[
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "designCode", label: "Design", type: "select", options: designOptions },
@@ -71,7 +71,7 @@ export default async function Production() {
             action="allocate-grey"
             title="Allocate Grey to Order"
             submitLabel="Allocate Grey"
-            successMessage={() => "Grey allocated to the sale/production order."}
+            successText="Grey allocated to the sale/production order."
             fields={[
               { name: "greyLotId", label: "Grey lot", type: "select", options: lotOptions },
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
