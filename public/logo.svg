@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="U.K Arts">
+  <rect x="2.5" y="2.5" width="59" height="59" rx="13" fill="#f3e8cf" stroke="#8a5a2b" stroke-width="2.5"/>
+  <rect x="7.5" y="7.5" width="49" height="49" rx="9.5" fill="none" stroke="#c39b5f" stroke-width="1.1"/>
+  <!-- spool / bobbin motif behind the monogram -->
+  <g stroke="#c39b5f" stroke-width="1.4" opacity="0.55">
+    <line x1="16" y1="15" x2="48" y2="15"/>
+    <line x1="16" y1="49" x2="48" y2="49"/>
+  </g>
+  <text x="32" y="41" font-family="Georgia, 'Times New Roman', serif" font-size="25" font-weight="700" fill="#3a2c1c" text-anchor="middle" letter-spacing="0.5">UK</text>
+  <line x1="21" y1="46.5" x2="43" y2="46.5" stroke="#8a5a2b" stroke-width="1.6"/>
+</svg>
