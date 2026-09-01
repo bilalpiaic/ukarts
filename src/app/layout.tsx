@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "U.K Arts ERP",
   description: "Textile ERP — Inventory, Production and Double-Entry Accounting",
+  icons: { icon: "/logo.svg" },
 };
 
 export default async function RootLayout({

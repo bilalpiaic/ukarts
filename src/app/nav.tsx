@@ -32,7 +32,14 @@ export function Nav({ username, role }: { username: string; role: string }) {
 
   return (
     <nav className="nav no-print">
-      <div className="nav-brand">U.K Arts ERP</div>
+      <div className="nav-brand">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="U.K Arts" className="nav-logo" width={38} height={38} />
+        <div>
+          <div className="brand-title">U.K Arts</div>
+          <div className="brand-sub">ERP · Accounting</div>
+        </div>
+      </div>
       <div className="nav-links">
         {links.map((l) => (
           <Link

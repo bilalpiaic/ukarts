@@ -11,6 +11,8 @@ export default async function LoginPage({
   return (
     <div className="login-wrap">
       <div className="login-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="U.K Arts" className="login-logo" width={56} height={56} />
         <div className="login-brand">U.K Arts ERP</div>
         <p className="subtitle">Sign in to continue</p>
         <LoginForm next={next ?? "/"} />
