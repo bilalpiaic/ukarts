@@ -95,6 +95,26 @@ npm run dev                       # http://localhost:3000
 
 `DATABASE_URL` defaults to `postgres://ukarts:ukarts@localhost:5432/ukarts`.
 
+### Signing in
+
+The app requires authentication. Seeded demo accounts:
+
+- `admin` / `admin123` — full access (edit/delete, Admin, Settings)
+- `user` / `user123` — create and view
+
+Set `AUTH_SECRET` (used to sign session cookies) to a long random value in
+production; a development fallback is used when it is unset.
+
+### Feature highlights
+
+- Admin/User authentication with role-based access
+- Organization settings (used in print headers)
+- Searchable, type-to-filter dropdowns (LOVs) throughout
+- Reports dashboard with from/to date filtering and printable output
+- Print buttons on all forms and reports
+- Multi-tab Workspace to operate several modules at once
+- Admin editing/deletion of master data and voiding of documents
+
 ### Using the Cloud Agent environment
 
 This repo ships a Cloud Agent environment (`.cursor/environment.json`) that
@@ -200,8 +220,11 @@ connection string yourself:
 
 ```bash
 vercel env add DATABASE_URL production        # paste the Neon pooled connection string
+vercel env add AUTH_SECRET production          # long random value for session signing
 vercel --prod
 ```
+
+Set `AUTH_SECRET` in Vercel project settings for secure sessions in production.
 
 ## Roadmap
 

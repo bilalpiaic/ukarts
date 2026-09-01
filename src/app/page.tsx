@@ -8,6 +8,7 @@ import {
   healthCheck,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
+import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,10 @@ export default async function Overview() {
 
   return (
     <div className="container">
-      <h1 className="page-title">Overview</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 className="page-title">Overview</h1>
+        <PrintButton label="Print Dashboard" />
+      </div>
 
       <div className="kpis">
         <div className="kpi">

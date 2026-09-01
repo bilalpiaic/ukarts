@@ -87,6 +87,18 @@ CREATE TABLE IF NOT EXISTS master.designs (
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
 );
 
+CREATE TABLE IF NOT EXISTS master.organization (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(250) NOT NULL,
+    address TEXT,
+    phone VARCHAR(50),
+    email VARCHAR(200),
+    tax_id VARCHAR(100),
+    currency VARCHAR(10) NOT NULL DEFAULT 'PKR',
+    fiscal_year_start VARCHAR(5) DEFAULT '07-01',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS inventory.locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     location_code VARCHAR(100) NOT NULL UNIQUE,

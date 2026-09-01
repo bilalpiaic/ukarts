@@ -1,9 +1,24 @@
 -- U.K Arts ERP - seed / reference data. Idempotent (safe to re-run).
 
--- Default admin user (password_hash is a placeholder; auth is out of scope for this slice)
+-- Users with real bcrypt password hashes (pgcrypto). Default credentials:
+--   admin / admin123  (role ADMIN — full edit/delete)
+--   user  / user123   (role USER  — create/view)
 INSERT INTO master.users (username, full_name, email, password_hash, role)
-VALUES ('admin', 'System Administrator', 'admin@ukarts.local', 'x', 'ADMIN')
+VALUES ('admin', 'System Administrator', 'admin@ukarts.local', crypt('admin123', gen_salt('bf')), 'ADMIN')
 ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO master.users (username, full_name, email, password_hash, role)
+VALUES ('user', 'Standard User', 'user@ukarts.local', crypt('user123', gen_salt('bf')), 'USER')
+ON CONFLICT (username) DO NOTHING;
+
+-- Upgrade any legacy placeholder hash to a real bcrypt hash.
+UPDATE master.users SET password_hash = crypt('admin123', gen_salt('bf'))
+WHERE username = 'admin' AND password_hash = 'x';
+
+-- Organization defaults (used in print headers and settings)
+INSERT INTO master.organization (name, address, phone, email, tax_id, currency)
+SELECT 'U.K Arts', 'Faisalabad, Pakistan', '+92-41-0000000', 'info@ukarts.local', 'NTN-0000000', 'PKR'
+WHERE NOT EXISTS (SELECT 1 FROM master.organization);
 
 -- Chart of accounts (codes referenced by the automatic posting rules in the SDD)
 INSERT INTO accounting.accounts (account_code, account_name, account_type) VALUES

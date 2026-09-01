@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import * as erp from "@/lib/erp";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ name: string }> },
 ) {
+  try {
+    await requireUser();
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 401 });
+  }
   const { name } = await params;
   const handler = handlers[name];
   if (!handler) {

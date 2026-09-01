@@ -7,6 +7,7 @@ import {
   getSaleOrders,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
+import { PrintButton } from "../print-button";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,10 @@ export default async function Sales() {
 
   return (
     <div className="container">
-      <h1 className="page-title">Sales &amp; Dispatch</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 className="page-title">Sales &amp; Dispatch</h1>
+        <PrintButton />
+      </div>
       <div className="grid">
         <div className="card">
           <ActionForm
