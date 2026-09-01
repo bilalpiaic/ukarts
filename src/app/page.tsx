@@ -1,45 +1,23 @@
 import {
-  getGreyItems,
-  getGreyStock,
-  getRecentJournalEntries,
-  getSuppliers,
+  getInventoryByStage,
+  getKpis,
+  getPartyLedgers,
+  getProductionOrders,
+  getProfitability,
   getTrialBalance,
   healthCheck,
 } from "@/lib/erp";
-import { GreyPurchaseForm, OwnerInvestmentForm } from "./forms";
+import { money, qty } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const money = (v: number | string) =>
-  Number(v).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-const qty = (v: number | string) =>
-  Number(v).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  });
-
-export default async function Home() {
-  let dbOk = true;
+export default async function Overview() {
   try {
     await healthCheck();
   } catch {
-    dbOk = false;
-  }
-
-  if (!dbOk) {
     return (
       <div className="container">
-        <div className="header">
-          <div>
-            <h1>U.K Arts ERP</h1>
-            <div className="subtitle">Textile ERP Accounting System</div>
-          </div>
-          <span className="badge">DB: unavailable</span>
-        </div>
+        <h1 className="page-title">Overview</h1>
         <div className="card">
           <p>
             Could not reach PostgreSQL. Ensure the database is running and{" "}
@@ -50,46 +28,45 @@ export default async function Home() {
     );
   }
 
-  const [trial, stock, suppliers, items, journals] = await Promise.all([
+  const [kpis, trial, stock, ledgers, profit, pos] = await Promise.all([
+    getKpis(),
     getTrialBalance(),
-    getGreyStock(),
-    getSuppliers(),
-    getGreyItems(),
-    getRecentJournalEntries(),
+    getInventoryByStage(),
+    getPartyLedgers(),
+    getProfitability(),
+    getProductionOrders(),
   ]);
-
-  const supplierOptions = suppliers.map((s) => ({
-    id: s.id,
-    label: `${s.party_name} (${s.party_code})`,
-  }));
-  const itemOptions = items.map((i) => ({
-    id: i.id,
-    label: `${i.item_name} (${i.item_code})`,
-  }));
 
   return (
     <div className="container">
-      <div className="header">
-        <div>
-          <h1>U.K Arts ERP</h1>
-          <div className="subtitle">
-            Inventory ledger · Production ledger · Double-entry general ledger
+      <h1 className="page-title">Overview</h1>
+
+      <div className="kpis">
+        <div className="kpi">
+          <div className="kpi-label">Sales</div>
+          <div className="kpi-value">{money(kpis.sales)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Expenses</div>
+          <div className="kpi-value">{money(kpis.expenses)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Profit</div>
+          <div className={`kpi-value ${kpis.profit >= 0 ? "pos" : "neg"}`}>
+            {money(kpis.profit)}
           </div>
         </div>
-        <span className="badge ok">● PostgreSQL connected</span>
+        <div className="kpi">
+          <div className="kpi-label">Payables</div>
+          <div className="kpi-value">{money(kpis.payables)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Receivables</div>
+          <div className="kpi-value">{money(kpis.receivables)}</div>
+        </div>
       </div>
 
       <div className="grid">
-        <div className="card">
-          <h2>Record Owner Investment</h2>
-          <OwnerInvestmentForm />
-        </div>
-
-        <div className="card">
-          <h2>Record Grey Purchase</h2>
-          <GreyPurchaseForm suppliers={supplierOptions} items={itemOptions} />
-        </div>
-
         <div className="card full">
           <h2>
             Trial Balance{" "}
@@ -98,10 +75,7 @@ export default async function Home() {
             </span>
           </h2>
           {trial.rows.length === 0 ? (
-            <p className="subtitle">
-              No posted entries yet. Record an owner investment or grey purchase
-              above.
-            </p>
+            <p className="subtitle">No posted entries yet.</p>
           ) : (
             <table>
               <thead>
@@ -135,29 +109,27 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="card full">
-          <h2>Grey Stock by Location &amp; Lot (from inventory ledger)</h2>
+        <div className="card">
+          <h2>Inventory by Stage</h2>
           {stock.length === 0 ? (
-            <p className="subtitle">No stock yet. Record a grey purchase above.</p>
+            <p className="subtitle">No stock yet.</p>
           ) : (
             <table>
               <thead>
                 <tr>
                   <th>Location</th>
                   <th>Item</th>
-                  <th>Lot</th>
+                  <th>Type</th>
                   <th className="num">Stock</th>
-                  <th className="num">Value</th>
                 </tr>
               </thead>
               <tbody>
-                {stock.map((r, idx) => (
-                  <tr key={`${r.lot_number}-${idx}`}>
+                {stock.map((r, i) => (
+                  <tr key={`${r.location_code}-${r.item_code}-${i}`}>
                     <td>{r.location_name}</td>
-                    <td>{r.item_name}</td>
-                    <td>{r.lot_number}</td>
+                    <td>{r.item_code}</td>
+                    <td>{r.item_type}</td>
                     <td className="num">{qty(r.stock)}</td>
-                    <td className="num">{money(r.value)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -165,35 +137,75 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="card full">
-          <h2>Recent Journal Vouchers</h2>
-          {journals.length === 0 ? (
-            <p className="subtitle">No vouchers yet.</p>
+        <div className="card">
+          <h2>Party Ledgers (AP / AR)</h2>
+          {ledgers.length === 0 ? (
+            <p className="subtitle">No party balances yet.</p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Voucher</th>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th className="num">Amount</th>
+                  <th>Party</th>
+                  <th>Roles</th>
+                  <th className="num">Balance</th>
                 </tr>
               </thead>
               <tbody>
-                {journals.map((j) => (
-                  <tr key={j.voucher_number}>
-                    <td>{j.voucher_number}</td>
-                    <td>{j.voucher_date}</td>
-                    <td>{j.voucher_type}</td>
-                    <td>{j.description}</td>
-                    <td>
-                      <span className="pill">{j.status}</span>
-                    </td>
-                    <td className="num">{money(j.total)}</td>
-                  </tr>
-                ))}
+                {ledgers.map((r) => {
+                  const bal = Number(r.balance);
+                  return (
+                    <tr key={r.party_code}>
+                      <td>{r.party_name}</td>
+                      <td>{r.roles}</td>
+                      <td className="num">
+                        {bal >= 0
+                          ? `${money(bal)} payable`
+                          : `${money(-bal)} receivable`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card full">
+          <h2>Production Orders &amp; Profitability</h2>
+          {pos.length === 0 ? (
+            <p className="subtitle">No production orders yet.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>PO</th>
+                  <th>Sale Order</th>
+                  <th className="num">Planned</th>
+                  <th className="num">Actual</th>
+                  <th>Status</th>
+                  <th className="num">Revenue</th>
+                  <th className="num">Cost</th>
+                  <th className="num">Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pos.map((po) => {
+                  const p = profit.find((x) => x.po_number === po.po_number);
+                  return (
+                    <tr key={po.po_number}>
+                      <td>{po.po_number}</td>
+                      <td>{po.sale_order}</td>
+                      <td className="num">{qty(po.planned_quantity)}</td>
+                      <td className="num">{qty(po.actual_quantity)}</td>
+                      <td>
+                        <span className="pill">{po.status}</span>
+                      </td>
+                      <td className="num">{money(p?.revenue ?? 0)}</td>
+                      <td className="num">{money(p?.cost ?? 0)}</td>
+                      <td className="num">{money(p?.profit ?? 0)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

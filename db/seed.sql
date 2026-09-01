@@ -8,6 +8,7 @@ ON CONFLICT (username) DO NOTHING;
 -- Chart of accounts (codes referenced by the automatic posting rules in the SDD)
 INSERT INTO accounting.accounts (account_code, account_name, account_type) VALUES
     ('1000', 'Cash / Bank',            'ASSET'),
+    ('1100', 'Accounts Receivable',    'ASSET'),
     ('1200', 'Grey Inventory',         'ASSET'),
     ('1300', 'Processed Cloth',        'ASSET'),
     ('1400', 'Finished Goods',         'ASSET'),
@@ -58,16 +59,54 @@ JOIN master.units u ON u.unit_code = 'MTR'
 WHERE c.category_code = 'LAWN'
 ON CONFLICT (item_code) DO NOTHING;
 
--- Grey supplier party
+-- Processed cloth item (output of processing)
+INSERT INTO master.items (item_code, item_name, item_type, category_id, quality_id, unit_id)
+SELECT 'PROC-LAWN-A', 'Processed Lawn Grade A', 'PROCESSED_CLOTH', c.id, q.id, u.id
+FROM master.categories c
+JOIN master.qualities q ON q.quality_code = 'LAWN-A'
+JOIN master.units u ON u.unit_code = 'MTR'
+WHERE c.category_code = 'LAWN'
+ON CONFLICT (item_code) DO NOTHING;
+
+-- Finished good item (output of stitching), measured in pieces
+INSERT INTO master.items (item_code, item_name, item_type, unit_id)
+SELECT 'FG-2PC-SUIT', 'Ladies 2PC Suit', 'FINISHED_GOOD', u.id
+FROM master.units u WHERE u.unit_code = 'PCS'
+ON CONFLICT (item_code) DO NOTHING;
+
+-- Design (BOM basis): 1 suit consumes 5 meters of fabric
+INSERT INTO master.designs (design_code, design_name, category_id, standard_consumption)
+SELECT 'DZ-2PC', 'Ladies 2PC Suit', c.id, 5
+FROM master.categories c WHERE c.category_code = 'LAWN'
+ON CONFLICT (design_code) DO NOTHING;
+
+-- Parties: supplier, customer, processor, stitcher
 INSERT INTO master.parties (party_code, party_name, phone) VALUES
-    ('SUP-001', 'Al-Karam Grey Mills', '+92-300-0000001')
+    ('SUP-001',  'Al-Karam Grey Mills',   '+92-300-0000001'),
+    ('CUST-001', 'Ideas Retail',          '+92-300-0000002'),
+    ('PROC-001', 'Master Dyeing & Processing', '+92-300-0000003'),
+    ('STIT-001', 'Fine Stitching House',   '+92-300-0000004')
 ON CONFLICT (party_code) DO NOTHING;
 
 INSERT INTO master.party_roles (party_id, role)
-SELECT p.id, 'GREY_SUPPLIER' FROM master.parties p WHERE p.party_code = 'SUP-001'
+SELECT p.id, r.role FROM master.parties p
+JOIN (VALUES
+    ('SUP-001',  'GREY_SUPPLIER'),
+    ('CUST-001', 'CUSTOMER'),
+    ('PROC-001', 'PROCESSOR'),
+    ('STIT-001', 'STITCHER')
+) AS r(party_code, role) ON r.party_code = p.party_code
 ON CONFLICT (party_id, role) DO NOTHING;
 
--- Owner grey store location
-INSERT INTO inventory.locations (location_code, location_name, location_type) VALUES
-    ('OWNER_GREY', 'Owner Grey Store', 'OWNER_GREY')
+-- Locations across every stage of the grey lifecycle
+INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+SELECT v.location_code, v.location_name, v.location_type, p.id
+FROM (VALUES
+    ('OWNER_GREY',      'Owner Grey Store',     'OWNER_GREY',      NULL),
+    ('PROCESSED_STORE', 'Processed Cloth Store','PROCESSED_STORE', NULL),
+    ('FINISHED_GOODS',  'Finished Goods Store', 'FINISHED_GOODS',  NULL),
+    ('BG_PROCESSOR',    'Processor Floor',      'PROCESSOR',       'PROC-001'),
+    ('STITCHER',        'Stitcher Floor',       'STITCHER',        'STIT-001')
+) AS v(location_code, location_name, location_type, party_code)
+LEFT JOIN master.parties p ON p.party_code = v.party_code
 ON CONFLICT (location_code) DO NOTHING;
