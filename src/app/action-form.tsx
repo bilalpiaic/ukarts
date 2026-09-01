@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Combobox } from "./combobox";
 
 export interface Field {
   name: string;
@@ -55,12 +56,14 @@ export function ActionForm({
   submitLabel,
   fields,
   successText,
+  apiBase = "/api/action",
 }: {
   action: string;
   title: string;
   submitLabel: string;
   fields: Field[];
   successText?: string;
+  apiBase?: string;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -89,7 +92,7 @@ export function ActionForm({
         payload[f.name] =
           f.type === "number" ? Number(values[f.name]) : values[f.name];
       }
-      const res = await fetch(`/api/action/${action}`, {
+      const res = await fetch(`${apiBase}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -115,19 +118,11 @@ export function ActionForm({
         <div className="form-row" key={f.name}>
           <label>{f.label}</label>
           {f.type === "select" ? (
-            <select
+            <Combobox
+              options={f.options ?? []}
               value={values[f.name]}
-              onChange={(e) => set(f.name, e.target.value)}
-            >
-              {(f.options ?? []).length === 0 && (
-                <option value="">— none available —</option>
-              )}
-              {(f.options ?? []).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => set(f.name, v)}
+            />
           ) : (
             <input
               type={f.type}

@@ -250,12 +250,34 @@ export interface TrialBalanceRow {
   credit: string;
 }
 
-export async function getTrialBalance(): Promise<{
+export interface DateRange {
+  from?: string;
+  to?: string;
+}
+
+/** Build a "voucher_date BETWEEN" clause starting at parameter index `start`. */
+function dateClause(range: DateRange | undefined, start: number) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+  let i = start;
+  if (range?.from) {
+    clauses.push(`je.voucher_date >= $${i++}`);
+    params.push(range.from);
+  }
+  if (range?.to) {
+    clauses.push(`je.voucher_date <= $${i++}`);
+    params.push(range.to);
+  }
+  return { sql: clauses.length ? " AND " + clauses.join(" AND ") : "", params };
+}
+
+export async function getTrialBalance(range?: DateRange): Promise<{
   rows: TrialBalanceRow[];
   totalDebit: number;
   totalCredit: number;
   balanced: boolean;
 }> {
+  const dc = dateClause(range, 1);
   const rows = await query<TrialBalanceRow>(
     `SELECT a.account_code, a.account_name, a.account_type,
             COALESCE(SUM(jl.debit), 0)::text  AS debit,
@@ -263,10 +285,11 @@ export async function getTrialBalance(): Promise<{
      FROM accounting.accounts a
      JOIN accounting.journal_lines jl ON jl.account_id = a.id
      JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id
-     WHERE je.status = 'POSTED'
+     WHERE je.status = 'POSTED'${dc.sql}
      GROUP BY a.account_code, a.account_name, a.account_type
      HAVING COALESCE(SUM(jl.debit), 0) <> 0 OR COALESCE(SUM(jl.credit), 0) <> 0
      ORDER BY a.account_code`,
+    dc.params,
   );
   const totalDebit = rows.reduce((s, r) => s + Number(r.debit), 0);
   const totalCredit = rows.reduce((s, r) => s + Number(r.credit), 0);
@@ -1353,7 +1376,8 @@ export async function getInventoryByStage() {
   );
 }
 
-export async function getPartyLedgers() {
+export async function getPartyLedgers(range?: DateRange) {
+  const dc = dateClause(range, 1);
   return query<{
     party_code: string;
     party_name: string;
@@ -1371,10 +1395,52 @@ export async function getPartyLedgers() {
      JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status = 'POSTED'
      JOIN master.parties p ON p.id = jl.party_id
      LEFT JOIN master.party_roles r ON r.party_id = p.id
+     WHERE TRUE${dc.sql}
      GROUP BY p.id, p.party_code, p.party_name
      HAVING SUM(jl.debit) <> 0 OR SUM(jl.credit) <> 0
      ORDER BY p.party_name`,
+    dc.params,
   );
+}
+
+export async function getJournalRegister(range?: DateRange) {
+  const dc = dateClause(range, 1);
+  return query<{
+    voucher_number: string;
+    voucher_date: string;
+    voucher_type: string;
+    description: string;
+    total: string;
+  }>(
+    `SELECT je.voucher_number, je.voucher_date::text, je.voucher_type,
+            je.description, COALESCE(SUM(jl.debit), 0)::text AS total
+     FROM accounting.journal_entries je
+     LEFT JOIN accounting.journal_lines jl ON jl.journal_entry_id = je.id
+     WHERE je.status = 'POSTED'${dc.sql}
+     GROUP BY je.id
+     ORDER BY je.voucher_date DESC, je.created_at DESC`,
+    dc.params,
+  );
+}
+
+export async function getProfitLoss(range?: DateRange) {
+  const dc = dateClause(range, 1);
+  const rows = await query<{ account_type: string; amount: string }>(
+    `SELECT a.account_type,
+            SUM(CASE WHEN a.account_type='INCOME' THEN jl.credit - jl.debit
+                     ELSE jl.debit - jl.credit END)::text AS amount
+     FROM accounting.journal_lines jl
+     JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status='POSTED'
+     JOIN accounting.accounts a ON a.id = jl.account_id
+     WHERE a.account_type IN ('INCOME','EXPENSE')${dc.sql}
+     GROUP BY a.account_type`,
+    dc.params,
+  );
+  const map: Record<string, number> = {};
+  for (const r of rows) map[r.account_type] = Number(r.amount);
+  const income = map.INCOME ?? 0;
+  const expense = map.EXPENSE ?? 0;
+  return { income, expense, net: income - expense };
 }
 
 export async function getProductionCostReport() {
@@ -1571,6 +1637,23 @@ export async function getStitchingOrders() {
      LEFT JOIN production.production_orders pr ON pr.id = sto.production_order_id
      ORDER BY sto.issue_date DESC`,
   );
+}
+
+export async function getOrganization() {
+  const rows = await query<{
+    id: string;
+    name: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+    tax_id: string | null;
+    currency: string;
+    fiscal_year_start: string | null;
+  }>(
+    `SELECT id, name, address, phone, email, tax_id, currency, fiscal_year_start
+     FROM master.organization ORDER BY updated_at LIMIT 1`,
+  );
+  return rows[0] ?? null;
 }
 
 export async function getKpis() {

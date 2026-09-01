@@ -126,6 +126,220 @@ a {
   margin: 4px 0 18px;
 }
 
+.nav-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Login */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+}
+
+.login-brand {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.login-hint {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+}
+
+/* Combobox (searchable LOV) */
+.combobox {
+  position: relative;
+}
+
+.combobox-input {
+  width: 100%;
+}
+
+.combobox-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.combobox-option {
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.combobox-option:hover,
+.combobox-option.active {
+  background: rgba(79, 140, 255, 0.18);
+}
+
+.combobox-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Toolbar / filters */
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.toolbar .form-row {
+  margin-bottom: 0;
+}
+
+/* Workspace tabs */
+.ws-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ws-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.ws-tab.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(79, 140, 255, 0.12);
+}
+
+.ws-tab .close {
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+}
+
+.ws-frame {
+  width: 100%;
+  height: calc(100vh - 170px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid #5b2330;
+  color: var(--danger);
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn-danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+/* Print */
+@media print {
+  .no-print,
+  .nav,
+  .nav-user,
+  form,
+  .toolbar,
+  .row-actions,
+  button {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .container {
+    padding: 0;
+    max-width: 100%;
+  }
+  .card,
+  .kpi {
+    border: 1px solid #ccc;
+    background: #fff;
+    break-inside: avoid;
+  }
+  .card h2,
+  .kpi .kpi-label,
+  .subtitle,
+  th {
+    color: #333 !important;
+  }
+  th,
+  td {
+    border-bottom: 1px solid #ccc;
+  }
+  .print-header {
+    display: block !important;
+  }
+}
+
+.print-header {
+  display: none;
+}
+
 .header {
   display: flex;
   align-items: baseline;

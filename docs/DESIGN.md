@@ -910,4 +910,67 @@ Category-wise
 Sale Order-wise
 Production Order-wise
 Party-wise
-Location-wise# ukarts
+Location-wise
+
+37. Additional Features (Implemented)
+This section documents platform features added on top of the core accounting and
+production design.
+
+37.1 Authentication & Authorization
+Users authenticate with a username and password. Password hashes are stored with
+bcrypt via the PostgreSQL pgcrypto extension (crypt()/gen_salt('bf')) and are
+never stored or compared in plaintext. A signed, HttpOnly session cookie
+(HMAC-SHA256 over a short-lived payload, secret from AUTH_SECRET) carries the
+user id, username, role, and expiry. Middleware enforces authentication on every
+route except the login page and the health check; unauthenticated API calls
+receive 401 and unauthenticated page requests redirect to /login.
+Roles: ADMIN and USER (plus ACCOUNTANT, INVENTORY_MANAGER, PRODUCTION_MANAGER,
+SALES_USER, VIEWER). ADMIN users can access the Admin and Settings areas and
+perform edits/deletes; other roles are restricted to create/view. Role checks are
+enforced both in middleware/UI (hiding controls) and server-side in the admin API
+(returns 403). Default seeded accounts: admin/admin123 (ADMIN), user/user123
+(USER).
+
+37.2 Organization Settings
+A single-row master.organization table holds the company profile (name, address,
+phone, email, tax id, currency, fiscal year start). An admin-only Settings page
+edits it. These details appear in printed report/form headers.
+
+37.3 Searchable List of Values (LOVs)
+All selection inputs (parties, items, lots, orders, designs, etc.) use a
+type-to-search combobox: the user types to filter options by label, navigates
+with the keyboard, and selects a value. This replaces plain dropdowns everywhere
+selections are applicable.
+
+37.4 Report Date Filtering
+Financial reports accept an optional from/to date range applied to
+voucher_date. The Reports dashboard exposes From/To pickers with Apply/Clear.
+Trial balance, party ledgers, journal register, and profit & loss all honor the
+selected period.
+
+37.5 Printing
+A print stylesheet (@media print) hides navigation, forms, and action buttons and
+renders clean, paginated tables with an organization header. Every module page,
+the Overview, and the Reports dashboard expose a Print button (window.print()),
+so forms, lists, and reports can be printed or saved as PDF.
+
+37.6 Reports Dashboard
+A dedicated dashboard provides instant views: income/expense/net-profit KPIs, a
+balanced trial balance, party ledgers (AP/AR), inventory by stage, and a journal
+register — all date-filterable and printable.
+
+37.7 Multi-Tab Workspace
+A Workspace screen lets the user operate several modules at once. Each tab hosts a
+module (Overview, Purchasing, Production, Processing, Stitching, Sales, Reports);
+tabs can be opened and closed, and all remain mounted so in-progress work is
+preserved when switching between them.
+
+37.8 Admin Editing & Deletion
+Administrators manage master data (parties, items, users, organization) with full
+create/edit/delete, and can void transactional documents (grey purchases, sale
+orders, journal vouchers). Voiding removes the document together with its journal
+entries, inventory movements, and cost rows inside a single transaction; foreign
+key constraints prevent deleting documents still referenced downstream, keeping
+the ledgers consistent. Note: posted-document immutability is preserved for
+regular users — only admins may void, and voiding is an all-or-nothing reversal
+rather than an in-place edit of posted financial data.
