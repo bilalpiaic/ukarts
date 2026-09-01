@@ -39,22 +39,32 @@ The system revolves around three integrated ledgers:
   quantities, WIP, losses, finished production.
 - **General ledger** — cash, payables, receivables, inventory, costs, income.
 
-## What's implemented today
+## What's implemented
 
-The current slice demonstrates the full ledger loop end to end:
+The full production-to-accounting lifecycle is implemented, each step running in
+a single transaction with a balanced journal and inventory-ledger movements:
 
-- **Owner investment** → balanced journal (`Dr Cash / Cr Owner Investment`).
-- **Grey purchase** → grey lot creation, an inventory movement into the owner
-  grey store, and a balanced journal (`Dr Grey Inventory / Cr Supplier Payable`)
-  — all in one transaction.
-- **Trial balance** report that proves Debits = Credits.
-- **Grey stock by location & lot**, computed from the inventory ledger via the
-  `inventory.get_location_stock` function.
-- **Recent journal vouchers** with posting status.
+- **Purchasing** — owner investment; grey purchase (lot + stock-in +
+  `Dr Grey Inventory / Cr Supplier Payable`).
+- **Production planning** — sale orders; production orders with BOM (design
+  standard consumption); grey allocation.
+- **Processing** — issue grey to processor (custody move); processing receipt
+  with reconciliation (`issued = processed + returned + shortage`) and shortage
+  classification (processor-recoverable / normal / abnormal loss); processing
+  bill (`Dr Processing Cost / Cr Processor Payable`, net of recovery).
+- **Stitching & finished goods** — issue processed cloth to stitcher; stitching
+  production receipt (finished goods into inventory); stitching bill.
+- **Sales** — dispatch finished goods with cash or credit revenue postings.
+- **Reports** — trial balance, party ledgers (AP/AR), inventory by stage,
+  production costing, profitability, and KPI dashboard.
 
-The complete database schema from the design document (all modules: sales,
-production, processing, stitching, finished goods, shortages, costing, audit) is
-created by `db/schema.sql`, ready for the remaining modules to build on.
+Each business action is exposed at `POST /api/action/[name]` and driven from the
+module pages (Overview, Purchasing, Production, Processing, Stitching, Sales).
+
+Accounting model note: conversion costs (processing, stitching) and grey
+consumption are expensed as incurred to the P&L, while the `production_costs`
+table accumulates true per-order product cost for management reporting and
+profitability. Every posting keeps Total Debits = Total Credits.
 
 ## Tech stack
 
@@ -195,8 +205,7 @@ vercel --prod
 
 ## Roadmap
 
-Remaining modules from the design document: sales orders & allocation,
-processing (issue/receipt/shortage/bills), stitching (issue/settlement/bills),
-finished goods, production costing, party ledgers, trial balance drill-downs,
-and profitability reporting. See [`docs/DESIGN.md`](docs/DESIGN.md) for the full
-specification and implementation phases.
+Future extensions from the design document: customer invoices & sales tax,
+purchase orders, bank reconciliation, GL inventory capitalization (WIP → finished
+goods), transaction reversal UI, role-based access control, and multi-warehouse.
+See [`docs/DESIGN.md`](docs/DESIGN.md) for the full specification.
