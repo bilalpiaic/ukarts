@@ -1,9 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
 
-const baseLinks = [
+export interface NavLink {
+  href: string;
+  label: string;
+}
+
+export const MODULE_LINKS: NavLink[] = [
   { href: "/", label: "Overview" },
   { href: "/purchasing", label: "Purchasing" },
   { href: "/production", label: "Production" },
@@ -12,23 +17,46 @@ const baseLinks = [
   { href: "/sales", label: "Sales" },
   { href: "/vouchers", label: "Vouchers" },
   { href: "/reports", label: "Reports" },
-  { href: "/workspace", label: "Workspace" },
 ];
 
-const adminLinks = [
+export const ADMIN_LINKS: NavLink[] = [
   { href: "/coa", label: "COA" },
   { href: "/settings", label: "Settings" },
 ];
 
-export function Nav({ username, role }: { username: string; role: string }) {
-  const pathname = usePathname();
+function linkActive(href: string, activeHref: string): boolean {
+  if (href === "/") return activeHref === "/";
+  return activeHref === href || activeHref.startsWith(`${href}/`);
+}
+
+export function Nav({
+  username,
+  role,
+  activeHref,
+  openHrefs,
+  onOpen,
+  onClose,
+}: {
+  username: string;
+  role: string;
+  activeHref: string;
+  openHrefs: string[];
+  onOpen: (href: string) => void;
+  onClose: (href: string) => void;
+}) {
   const router = useRouter();
-  const links = role === "ADMIN" ? [...baseLinks, ...adminLinks] : baseLinks;
+  const links = role === "ADMIN" ? [...MODULE_LINKS, ...ADMIN_LINKS] : MODULE_LINKS;
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
+  }
+
+  function onNavClick(e: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onOpen(href);
   }
 
   return (
@@ -42,15 +70,34 @@ export function Nav({ username, role }: { username: string; role: string }) {
         </div>
       </div>
       <div className="nav-links">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={pathname === l.href ? "nav-link active" : "nav-link"}
-          >
-            {l.label}
-          </Link>
-        ))}
+        {links.map((l) => {
+          const open = openHrefs.includes(l.href);
+          const active = linkActive(l.href, activeHref);
+          return (
+            <a
+              key={l.href}
+              href={l.href}
+              className={`nav-link${active ? " active" : ""}${open && !active ? " open" : ""}`}
+              onClick={(e) => onNavClick(e, l.href)}
+            >
+              <span>{l.label}</span>
+              {open && openHrefs.length > 1 && (
+                <button
+                  type="button"
+                  className="nav-link-close"
+                  aria-label={`Close ${l.label}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose(l.href);
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </a>
+          );
+        })}
       </div>
       <div className="nav-user">
         <span className="badge">

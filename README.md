@@ -117,7 +117,7 @@ production; a development fallback is used when it is unset.
 - Searchable, type-to-filter dropdowns (LOVs) throughout
 - Reports dashboard with from/to date filtering and printable output
 - Print buttons on all forms and reports
-- Multi-tab Workspace to operate several modules at once
+- Main-menu multi-tab: open several modules at once from the top nav
 - Admin editing/deletion of master data and voiding of documents
 
 ### Using the Cloud Agent environment
