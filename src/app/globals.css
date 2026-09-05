@@ -899,8 +899,10 @@ code {
     border-radius: 8px;
   }
   table {
-    min-width: 0;
     font-size: 12px;
+  }
+  .lines-table {
+    min-width: 0;
   }
   th,
   td {
