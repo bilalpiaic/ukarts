@@ -974,3 +974,55 @@ key constraints prevent deleting documents still referenced downstream, keeping
 the ledgers consistent. Note: posted-document immutability is preserved for
 regular users — only admins may void, and voiding is an all-or-nothing reversal
 rather than an in-place edit of posted financial data.
+
+38. Additional Features (Release 2 — Conventional Accounting Framework)
+
+38.1 Visual Identity
+The interface uses a lighter parchment paper tone with jet-black body text for
+maximum legibility and a conventional ledger appearance. Tables carry column and
+row rules, tabular-aligned figures, double-ruled totals, sticky headers, and
+status pills (POSTED / DRAFT / VOID). Colour is restricted to fine accents
+(brass rules, ledger-green and oxblood figures) so the screens read like printed
+account books.
+
+38.2 Journal Vouchers (Manual Multi-Line Entry)
+A dedicated Journal Voucher screen provides conventional double-entry data entry:
+a voucher header (date, narration) plus an unlimited number of Debit/Credit lines,
+each with a searchable account and optional party. A live balance strip shows total
+debit, total credit, and whether the voucher balances; posting is blocked until
+debit equals credit. Vouchers can be saved as DRAFT or posted immediately.
+Auto-generated vouchers (purchases, sales, processing, stitching) continue to post
+through the same accounting engine and appear in the same register.
+
+38.3 Multi-Line / Multiple Entries in Forms
+Document forms accept several line items in a single submission. Grey Purchase, for
+example, records multiple grey items (one grey lot and inventory movement per line)
+under one supplier bill and a single balanced journal for the total. A reusable
+multi-line form component (header fields + repeatable line grid with add/remove
+rows) backs these screens, and the Journal Voucher form is the canonical multi-line
+Debit/Credit editor.
+
+38.4 Report Drill-Down (Hyperlinks to Source)
+Every figure in the reports and dashboards links back to its source. Trial-balance
+account codes open an Account Ledger (all postings with a running balance); party
+balances open a Party Ledger; and every voucher number — in the Journal Register,
+Voucher Register, Sales journal, and both ledgers — opens the full Journal Voucher.
+Ledger date filters are carried through the links so drill-downs respect the report
+period.
+
+38.5 Posting Lifecycle & Editable Entries
+Entries are editable after posting through a controlled post/unpost workflow:
+- Any authenticated user can create, save as draft, post, and edit DRAFT vouchers.
+- An administrator can Unpost a POSTED voucher, returning it to DRAFT so a user can
+  modify it and re-post.
+- An administrator can Delete any UNPOSTED (draft) voucher. Posted vouchers cannot
+  be edited or deleted until unposted, preserving the audit trail.
+These actions are available on the Voucher detail page and in the COA records panel.
+
+38.6 Chart of Accounts (COA) & Settings Reorganization
+The former Admin screen is now the Chart of Accounts workspace: create, edit,
+activate/deactivate and delete accounts (deletion blocked once an account has
+postings), alongside party and item master data and the document/voucher records
+panel. User administration (create/edit/reset-password/deactivate users) has moved
+to the Settings screen next to the organization profile. The old /admin route
+redirects to /coa.
