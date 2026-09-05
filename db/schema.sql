@@ -99,6 +99,12 @@ CREATE TABLE IF NOT EXISTS master.organization (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS master.app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS inventory.locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     location_code VARCHAR(100) NOT NULL UNIQUE,

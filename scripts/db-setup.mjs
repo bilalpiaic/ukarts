@@ -57,10 +57,21 @@ async function main() {
     console.log("Applying seed…");
     await client.query(seed);
 
-    const { rows } = await client.query(
+    const { rows: accounts } = await client.query(
       "SELECT count(*)::int AS n FROM accounting.accounts",
     );
-    console.log(`Done. Chart of accounts has ${rows[0].n} accounts.`);
+    const { rows: parties } = await client.query(
+      "SELECT count(*)::int AS n FROM master.parties",
+    );
+    const { rows: items } = await client.query(
+      "SELECT count(*)::int AS n FROM master.items",
+    );
+    const { rows: journals } = await client.query(
+      "SELECT count(*)::int AS n FROM accounting.journal_entries",
+    );
+    console.log(
+      `Done. COA ${accounts[0].n} accounts; parties ${parties[0].n}; items ${items[0].n}; journals ${journals[0].n}.`,
+    );
   } finally {
     await client.end();
   }
