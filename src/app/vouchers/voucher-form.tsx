@@ -108,7 +108,7 @@ export function VoucherForm({
   return (
     <form onSubmit={(e) => e.preventDefault()}>
       <h2>{mode === "edit" ? "Edit Journal Voucher" : "New Journal Voucher"}</h2>
-      <div className="grid" style={{ gridTemplateColumns: "1fr 2fr" }}>
+      <div className="header-fields">
         <div className="form-row">
           <label>Voucher date</label>
           <input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)} />
@@ -138,14 +138,14 @@ export function VoucherForm({
         <tbody>
           {lines.map((l, i) => (
             <tr key={i}>
-              <td>{i + 1}</td>
-              <td>
+              <td data-label="Line">{i + 1}</td>
+              <td data-label="Account">
                 <Combobox options={accounts} value={l.accountCode} onChange={(v) => setLine(i, "accountCode", v)} />
               </td>
-              <td>
+              <td data-label="Party">
                 <Combobox options={parties} value={l.partyCode} onChange={(v) => setLine(i, "partyCode", v)} placeholder="—" />
               </td>
-              <td className="num">
+              <td className="num" data-label="Debit">
                 <input
                   type="number"
                   step="0.01"
@@ -153,7 +153,7 @@ export function VoucherForm({
                   onChange={(e) => setLine(i, "debit", e.target.value)}
                 />
               </td>
-              <td className="num">
+              <td className="num" data-label="Credit">
                 <input
                   type="number"
                   step="0.01"
@@ -161,7 +161,7 @@ export function VoucherForm({
                   onChange={(e) => setLine(i, "credit", e.target.value)}
                 />
               </td>
-              <td>
+              <td data-label="">
                 <button
                   type="button"
                   className="icon-btn"

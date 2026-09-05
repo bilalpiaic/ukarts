@@ -38,8 +38,8 @@
     Helvetica, Arial, sans-serif;
 
   /* Responsive rhythm */
-  --gap: clamp(12px, 1.6vw, 20px);
-  --pad: clamp(14px, 2vw, 22px);
+  --gap: clamp(8px, 1.4vw, 20px);
+  --pad: clamp(8px, 1.6vw, 22px);
 }
 
 * {
@@ -104,7 +104,7 @@ h3,
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: clamp(16px, 2.4vw, 30px) var(--pad) 72px;
+  padding: clamp(8px, 1.8vw, 30px) var(--pad) clamp(24px, 6vw, 72px);
 }
 
 /* -------------------------------------------------------------------------
@@ -266,12 +266,12 @@ button:disabled {
 
 .card h2 {
   font-size: 13px;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink);
   border-bottom: 2px solid var(--line-strong);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   font-weight: 700;
 }
 
@@ -280,8 +280,8 @@ button:disabled {
 }
 
 .page-title {
-  font-size: clamp(19px, 2.4vw, 26px);
-  margin: 4px 0 18px;
+  font-size: clamp(18px, 2.4vw, 26px);
+  margin: 2px 0 12px;
   color: var(--ink);
 }
 
@@ -354,8 +354,8 @@ tfoot td {
 .form-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
 label {
@@ -685,6 +685,12 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
+.header-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--gap);
+}
+
 .line-tools {
   display: flex;
   gap: 8px;
@@ -778,13 +784,27 @@ code {
   .kpis {
     grid-template-columns: repeat(3, 1fr);
   }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .header-fields {
+    grid-template-columns: 1fr;
+  }
+  .container {
+    padding: 10px 10px 36px;
+  }
 }
 
-/* SM: phones */
+/* SM: phones — tight forms, full-width inputs, stacked line rows */
 @media (max-width: 640px) {
+  :root {
+    --gap: 8px;
+    --pad: 8px;
+  }
   .nav {
     min-height: 0;
-    padding: 8px 12px;
+    padding: 6px 8px;
+    gap: 6px;
   }
   .nav-user {
     width: 100%;
@@ -798,18 +818,157 @@ code {
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 2px;
+    gap: 0;
+  }
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .container {
+    padding: 6px 6px 20px;
   }
   .grid {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .header-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .kpi {
+    padding: 8px 10px;
   }
   .brand-sub {
     display: none;
   }
   .ws-frame {
-    height: calc(100vh - 240px);
+    height: calc(100vh - 200px);
+  }
+  .card {
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .card h2 {
+    margin: 0 0 8px;
+    padding-bottom: 4px;
+    font-size: 12px;
+  }
+  .page-title {
+    margin: 0 0 8px;
+  }
+  .form-row {
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+  label {
+    font-size: 11px;
+  }
+  input,
+  select,
+  .combobox-input {
+    padding: 10px 8px;
+    font-size: 16px;
+    border-radius: 6px;
+  }
+  form > button[type="submit"],
+  .line-tools > button {
+    width: 100%;
+  }
+  .line-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .toolbar {
+    padding: 8px;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .login-wrap {
+    align-items: flex-start;
+    padding: 8px;
+  }
+  .login-card {
+    padding: 16px 12px;
+    border-radius: 8px;
+  }
+  table {
+    min-width: 0;
+    font-size: 12px;
+  }
+  th,
+  td {
+    padding: 5px 6px;
+  }
+  .doc-meta {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    margin-bottom: 8px;
+  }
+
+  /* Stack document line rows so each field uses the full width */
+  .lines-table thead {
+    display: none;
+  }
+  .lines-table,
+  .lines-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border: none;
+  }
+  .lines-table tr {
+    display: block;
+    width: 100%;
+    background: var(--paper-sunk);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    padding: 6px;
+  }
+  .lines-table td {
+    display: grid;
+    grid-template-columns: minmax(70px, 30%) minmax(0, 1fr);
+    gap: 6px;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 5px 0;
+  }
+  .lines-table td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .lines-table td:first-child,
+  .lines-table td:last-child {
+    grid-template-columns: 1fr;
+  }
+  .lines-table td:first-child::before,
+  .lines-table td:last-child::before {
+    display: none;
+  }
+  .lines-table td:last-child {
+    text-align: right;
+    border-bottom: none;
+    padding-top: 6px;
+  }
+  .lines-table td.num input {
+    text-align: left;
+  }
+  .balance-strip {
+    gap: 8px;
+    padding: 8px;
+    margin-top: 8px;
   }
 }
 

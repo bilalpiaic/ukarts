@@ -54,7 +54,7 @@ export function MultiLineForm({
   successText,
   headerFields,
   lineColumns,
-  initialLines = 2,
+  initialLines = 1,
 }: {
   action: string;
   apiBase?: string;
@@ -157,9 +157,9 @@ export function MultiLineForm({
         <tbody>
           {lines.map((row, i) => (
             <tr key={i}>
-              <td>{i + 1}</td>
+              <td data-label="Line">{i + 1}</td>
               {lineColumns.map((c) => (
-                <td key={c.name} className={c.numeric ? "num" : ""}>
+                <td key={c.name} className={c.numeric ? "num" : ""} data-label={c.label}>
                   {c.type === "select" ? (
                     <Combobox
                       options={c.options ?? []}
@@ -176,7 +176,7 @@ export function MultiLineForm({
                   )}
                 </td>
               ))}
-              <td>
+              <td data-label="">
                 <button
                   type="button"
                   className="icon-btn"

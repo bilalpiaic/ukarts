@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Nav } from "./nav";
 import { getSession } from "@/lib/auth";
@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   title: "U.K Arts ERP",
   description: "Textile ERP — Inventory, Production and Double-Entry Accounting",
   icons: { icon: "/logo.svg" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
