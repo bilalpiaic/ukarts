@@ -17,6 +17,11 @@ const handlers: Record<string, Handler> = {
   "user-create": (b) => admin.createUser(b as never),
   "user-update": (b) => admin.updateUser(b as never),
   "user-delete": (b) => admin.deleteUser(b as never),
+  "account-create": (b) => admin.createAccount(b as never),
+  "account-update": (b) => admin.updateAccount(b as never),
+  "account-delete": (b) => admin.deleteAccount(b as never),
+  "journal-unpost": (b) => admin.unpostJournalEntry(b as never),
+  "journal-delete": (b) => admin.deleteJournalEntry(b as never),
   "document-delete": (b) => admin.deleteDocument(b as never),
 };
 

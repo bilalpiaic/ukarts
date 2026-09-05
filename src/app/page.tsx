@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   getInventoryByStage,
   getKpis,
@@ -94,7 +95,11 @@ export default async function Overview() {
               <tbody>
                 {trial.rows.map((r) => (
                   <tr key={r.account_code}>
-                    <td>{r.account_code}</td>
+                    <td>
+                      <Link className="src-link" href={`/accounts/${encodeURIComponent(r.account_code)}`}>
+                        {r.account_code}
+                      </Link>
+                    </td>
                     <td>{r.account_name}</td>
                     <td>{r.account_type}</td>
                     <td className="num">{money(r.debit)}</td>
@@ -159,7 +164,11 @@ export default async function Overview() {
                   const bal = Number(r.balance);
                   return (
                     <tr key={r.party_code}>
-                      <td>{r.party_name}</td>
+                      <td>
+                        <Link className="src-link" href={`/parties/${encodeURIComponent(r.party_code)}`}>
+                          {r.party_name}
+                        </Link>
+                      </td>
                       <td>{r.roles}</td>
                       <td className="num">
                         {bal >= 0

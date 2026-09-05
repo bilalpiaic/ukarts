@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ActionForm } from "../action-form";
 import {
   getInventoryByStage,
@@ -101,7 +102,11 @@ export default async function Sales() {
               <tbody>
                 {journals.map((j) => (
                   <tr key={j.voucher_number}>
-                    <td>{j.voucher_number}</td>
+                    <td>
+                      <Link className="src-link" href={`/vouchers/${j.id}`}>
+                        {j.voucher_number}
+                      </Link>
+                    </td>
                     <td>{j.voucher_date}</td>
                     <td>{j.voucher_type}</td>
                     <td>{j.description}</td>

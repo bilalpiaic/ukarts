@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
+import { listUsers } from "@/lib/admin";
 import { getOrganization } from "@/lib/erp";
 import { ActionForm } from "../action-form";
+import { AdminEntityTable } from "../admin-controls";
 
 export const dynamic = "force-dynamic";
 
 export default async function Settings() {
   const session = await getSession();
   if (!isAdmin(session)) redirect("/");
-  const org = await getOrganization();
+  const [org, users] = await Promise.all([getOrganization(), listUsers()]);
 
   return (
     <div className="container">
@@ -35,8 +37,39 @@ export default async function Settings() {
           <h2>About</h2>
           <p className="subtitle">
             These details appear on printed reports and forms. Only administrators
-            can change organization settings.
+            can change organization settings and manage users.
           </p>
+        </div>
+
+        {/* User Administration (moved here from the former Admin page) */}
+        <div className="card">
+          <ActionForm
+            apiBase="/api/admin"
+            action="user-create"
+            title="Add User"
+            submitLabel="Create User"
+            successText="User created."
+            fields={[
+              { name: "username", label: "Username", type: "text" },
+              { name: "full_name", label: "Full name", type: "text" },
+              {
+                name: "role",
+                label: "Role",
+                type: "select",
+                options: [
+                  { value: "USER", label: "User" },
+                  { value: "ADMIN", label: "Admin" },
+                  { value: "ACCOUNTANT", label: "Accountant" },
+                  { value: "VIEWER", label: "Viewer" },
+                ],
+              },
+              { name: "password", label: "Password", type: "text" },
+            ]}
+          />
+        </div>
+        <div className="card">
+          <h2>User Administration</h2>
+          <AdminEntityTable kind="user" rows={users} />
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import {
   getInventoryByStage,
@@ -31,6 +32,11 @@ export default async function Reports({
 
   const periodText =
     from || to ? `Period: ${from || "…"} to ${to || "…"}` : "All dates";
+
+  const qsParams = new URLSearchParams();
+  if (from) qsParams.set("from", from);
+  if (to) qsParams.set("to", to);
+  const qs = qsParams.toString() ? `?${qsParams.toString()}` : "";
 
   return (
     <div className="container">
@@ -85,7 +91,11 @@ export default async function Reports({
               <tbody>
                 {trial.rows.map((r) => (
                   <tr key={r.account_code}>
-                    <td>{r.account_code}</td>
+                    <td>
+                      <Link className="src-link" href={`/accounts/${encodeURIComponent(r.account_code)}${qs}`}>
+                        {r.account_code}
+                      </Link>
+                    </td>
                     <td>{r.account_name}</td>
                     <td>{r.account_type}</td>
                     <td className="num">{money(r.debit)}</td>
@@ -121,7 +131,11 @@ export default async function Reports({
                   const bal = Number(r.balance);
                   return (
                     <tr key={r.party_code}>
-                      <td>{r.party_name}</td>
+                      <td>
+                        <Link className="src-link" href={`/parties/${encodeURIComponent(r.party_code)}${qs}`}>
+                          {r.party_name}
+                        </Link>
+                      </td>
                       <td className="num">
                         {bal >= 0 ? `${money(bal)} payable` : `${money(-bal)} receivable`}
                       </td>
@@ -177,7 +191,11 @@ export default async function Reports({
               <tbody>
                 {journal.map((j) => (
                   <tr key={j.voucher_number}>
-                    <td>{j.voucher_number}</td>
+                    <td>
+                      <Link className="src-link" href={`/vouchers/${j.id}`}>
+                        {j.voucher_number}
+                      </Link>
+                    </td>
                     <td>{j.voucher_date}</td>
                     <td>{j.voucher_type}</td>
                     <td>{j.description}</td>
