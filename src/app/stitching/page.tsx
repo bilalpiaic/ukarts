@@ -42,7 +42,7 @@ export default async function Stitching() {
               { name: "productionOrderId", label: "Production order", type: "select", options: poOptions },
               { name: "stitcherCode", label: "Stitcher", type: "select", options: stitchers.map((s) => ({ value: s.party_code, label: s.party_name })) },
               { name: "processedItemCode", label: "Processed item", type: "select", options: processedOptions },
-              { name: "quantity", label: "Quantity (meters)", type: "number", default: "4900", step: "0.0001" },
+              { name: "quantity", label: "Quantity (meters)", type: "number", step: "0.0001" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />
@@ -58,10 +58,10 @@ export default async function Stitching() {
               { name: "stitchingOrderId", label: "Stitching order", type: "select", options: stitchOptions },
               { name: "finishedItemCode", label: "Finished item", type: "select", options: finishedOptions },
               { name: "processedItemCode", label: "Processed item consumed", type: "select", options: processedOptions },
-              { name: "processedConsumed", label: "Processed consumed (m)", type: "number", default: "4900", step: "0.0001" },
-              { name: "finishedQuantity", label: "Finished qty (pcs)", type: "number", default: "980", step: "1" },
-              { name: "acceptedQuantity", label: "Accepted qty (pcs)", type: "number", default: "960", step: "1" },
-              { name: "rejectedQuantity", label: "Rejected qty (pcs)", type: "number", default: "20", step: "1" },
+              { name: "processedConsumed", label: "Processed consumed (m)", type: "number", step: "0.0001" },
+              { name: "finishedQuantity", label: "Finished qty (pcs)", type: "number", step: "1" },
+              { name: "acceptedQuantity", label: "Accepted qty (pcs)", type: "number", step: "1" },
+              { name: "rejectedQuantity", label: "Rejected qty (pcs)", type: "number", default: "0", step: "1" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />
@@ -75,8 +75,8 @@ export default async function Stitching() {
             successText="Stitching bill posted (Dr Stitching Cost / Cr Stitcher Payable)."
             fields={[
               { name: "stitchingOrderId", label: "Stitching order", type: "select", options: stitchOptions },
-              { name: "quantity", label: "Quantity (pcs)", type: "number", default: "980", step: "1" },
-              { name: "rate", label: "Stitching rate / pc", type: "number", default: "150", step: "0.01" },
+              { name: "quantity", label: "Quantity (pcs)", type: "number", step: "1" },
+              { name: "rate", label: "Stitching rate / pc", type: "number", step: "0.01" },
               { name: "deductions", label: "Deductions", type: "number", default: "0", step: "0.01" },
               { name: "date", label: "Date", type: "date" },
             ]}

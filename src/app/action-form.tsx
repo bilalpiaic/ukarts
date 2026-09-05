@@ -7,7 +7,7 @@ import { Combobox } from "./combobox";
 export interface Field {
   name: string;
   label: string;
-  type: "number" | "text" | "date" | "select";
+  type: "number" | "text" | "date" | "select" | "password";
   options?: { value: string; label: string }[];
   default?: string;
   step?: string;
@@ -130,6 +130,7 @@ export function ActionForm({
               value={values[f.name]}
               onChange={(e) => set(f.name, e.target.value)}
               required={f.required ?? true}
+              autoComplete={f.type === "password" ? "new-password" : undefined}
             />
           )}
         </div>

@@ -1,14 +1,12 @@
--- U.K Arts ERP - seed / reference data. Idempotent (safe to re-run).
+-- U.K Arts ERP - production reference data. Idempotent (safe to re-run).
+-- Seeds only what the system needs to start: the bootstrap admin, organization,
+-- chart of accounts, posting rules, units, and warehouse locations.
+-- Sample parties, items, designs, and the demo "user" account are not inserted.
 
--- Users with real bcrypt password hashes (pgcrypto). Default credentials:
---   admin / admin123  (role ADMIN — full edit/delete)
---   user  / user123   (role USER  — create/view)
+-- Bootstrap administrator. The initial password is admin123 on first insert only;
+-- later password changes in Settings are preserved (ON CONFLICT DO NOTHING).
 INSERT INTO master.users (username, full_name, email, password_hash, role)
 VALUES ('admin', 'System Administrator', 'admin@ukarts.local', crypt('admin123', gen_salt('bf')), 'ADMIN')
-ON CONFLICT (username) DO NOTHING;
-
-INSERT INTO master.users (username, full_name, email, password_hash, role)
-VALUES ('user', 'Standard User', 'user@ukarts.local', crypt('user123', gen_salt('bf')), 'USER')
 ON CONFLICT (username) DO NOTHING;
 
 -- Upgrade any legacy placeholder hash to a real bcrypt hash.
@@ -56,72 +54,96 @@ INSERT INTO master.units (unit_code, unit_name, decimal_precision) VALUES
     ('PCS', 'Pieces', 0)
 ON CONFLICT (unit_code) DO NOTHING;
 
--- Category / quality
-INSERT INTO master.categories (category_code, category_name) VALUES
-    ('LAWN', 'Lawn Fabric')
-ON CONFLICT (category_code) DO NOTHING;
-
-INSERT INTO master.qualities (quality_code, quality_name, category_id)
-SELECT 'LAWN-A', 'Lawn Grade A', c.id FROM master.categories c WHERE c.category_code = 'LAWN'
-ON CONFLICT (quality_code) DO NOTHING;
-
--- Grey cloth item
-INSERT INTO master.items (item_code, item_name, item_type, category_id, quality_id, unit_id)
-SELECT 'GREY-LAWN-A', 'Grey Lawn Grade A', 'GREY_CLOTH', c.id, q.id, u.id
-FROM master.categories c
-JOIN master.qualities q ON q.quality_code = 'LAWN-A'
-JOIN master.units u ON u.unit_code = 'MTR'
-WHERE c.category_code = 'LAWN'
-ON CONFLICT (item_code) DO NOTHING;
-
--- Processed cloth item (output of processing)
-INSERT INTO master.items (item_code, item_name, item_type, category_id, quality_id, unit_id)
-SELECT 'PROC-LAWN-A', 'Processed Lawn Grade A', 'PROCESSED_CLOTH', c.id, q.id, u.id
-FROM master.categories c
-JOIN master.qualities q ON q.quality_code = 'LAWN-A'
-JOIN master.units u ON u.unit_code = 'MTR'
-WHERE c.category_code = 'LAWN'
-ON CONFLICT (item_code) DO NOTHING;
-
--- Finished good item (output of stitching), measured in pieces
-INSERT INTO master.items (item_code, item_name, item_type, unit_id)
-SELECT 'FG-2PC-SUIT', 'Ladies 2PC Suit', 'FINISHED_GOOD', u.id
-FROM master.units u WHERE u.unit_code = 'PCS'
-ON CONFLICT (item_code) DO NOTHING;
-
--- Design (BOM basis): 1 suit consumes 5 meters of fabric
-INSERT INTO master.designs (design_code, design_name, category_id, standard_consumption)
-SELECT 'DZ-2PC', 'Ladies 2PC Suit', c.id, 5
-FROM master.categories c WHERE c.category_code = 'LAWN'
-ON CONFLICT (design_code) DO NOTHING;
-
--- Parties: supplier, customer, processor, stitcher
-INSERT INTO master.parties (party_code, party_name, phone) VALUES
-    ('SUP-001',  'Al-Karam Grey Mills',   '+92-300-0000001'),
-    ('CUST-001', 'Ideas Retail',          '+92-300-0000002'),
-    ('PROC-001', 'Master Dyeing & Processing', '+92-300-0000003'),
-    ('STIT-001', 'Fine Stitching House',   '+92-300-0000004')
-ON CONFLICT (party_code) DO NOTHING;
-
-INSERT INTO master.party_roles (party_id, role)
-SELECT p.id, r.role FROM master.parties p
-JOIN (VALUES
-    ('SUP-001',  'GREY_SUPPLIER'),
-    ('CUST-001', 'CUSTOMER'),
-    ('PROC-001', 'PROCESSOR'),
-    ('STIT-001', 'STITCHER')
-) AS r(party_code, role) ON r.party_code = p.party_code
-ON CONFLICT (party_id, role) DO NOTHING;
-
--- Locations across every stage of the grey lifecycle
+-- System locations for every stage of the grey lifecycle (no sample parties).
 INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
-SELECT v.location_code, v.location_name, v.location_type, p.id
-FROM (VALUES
-    ('OWNER_GREY',      'Owner Grey Store',     'OWNER_GREY',      NULL),
-    ('PROCESSED_STORE', 'Processed Cloth Store','PROCESSED_STORE', NULL),
-    ('FINISHED_GOODS',  'Finished Goods Store', 'FINISHED_GOODS',  NULL),
-    ('BG_PROCESSOR',    'Processor Floor',      'PROCESSOR',       'PROC-001'),
-    ('STITCHER',        'Stitcher Floor',       'STITCHER',        'STIT-001')
-) AS v(location_code, location_name, location_type, party_code)
-LEFT JOIN master.parties p ON p.party_code = v.party_code
+VALUES
+    ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+    ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+    ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+    ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+    ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
 ON CONFLICT (location_code) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- Remove unused sample/demo master data from earlier seeds (safe: skips rows
+-- that are already referenced by live transactions).
+-- ---------------------------------------------------------------------------
+
+-- Re-home postings from the demo operator, then drop that account.
+UPDATE accounting.journal_entries
+SET posted_by = (SELECT id FROM master.users WHERE username = 'admin')
+WHERE posted_by IN (SELECT id FROM master.users WHERE username = 'user' AND email = 'user@ukarts.local');
+
+UPDATE inventory.inventory_transactions
+SET posted_by = (SELECT id FROM master.users WHERE username = 'admin')
+WHERE posted_by IN (SELECT id FROM master.users WHERE username = 'user' AND email = 'user@ukarts.local');
+
+UPDATE audit.audit_logs
+SET user_id = (SELECT id FROM master.users WHERE username = 'admin')
+WHERE user_id IN (SELECT id FROM master.users WHERE username = 'user' AND email = 'user@ukarts.local');
+
+DELETE FROM master.users
+WHERE username = 'user' AND email = 'user@ukarts.local';
+
+-- Unlink sample processor/stitcher parties from system locations.
+UPDATE inventory.locations
+SET party_id = NULL
+WHERE location_code IN ('BG_PROCESSOR', 'STITCHER')
+  AND party_id IN (
+    SELECT id FROM master.parties
+    WHERE party_code IN ('SUP-001', 'CUST-001', 'PROC-001', 'STIT-001')
+  );
+
+DELETE FROM master.party_roles
+WHERE party_id IN (
+  SELECT p.id FROM master.parties p
+  WHERE p.party_code IN ('SUP-001', 'CUST-001', 'PROC-001', 'STIT-001')
+    AND NOT EXISTS (SELECT 1 FROM inventory.grey_purchases g WHERE g.supplier_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM sales.sale_orders s WHERE s.buyer_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM production.processing_orders o WHERE o.processor_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM production.processing_bills b WHERE b.processor_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM production.stitching_orders o WHERE o.stitcher_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM production.stitching_bills b WHERE b.stitcher_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM accounting.journal_lines jl WHERE jl.party_id = p.id)
+    AND NOT EXISTS (SELECT 1 FROM inventory.locations l WHERE l.party_id = p.id)
+);
+
+DELETE FROM master.parties p
+WHERE p.party_code IN ('SUP-001', 'CUST-001', 'PROC-001', 'STIT-001')
+  AND NOT EXISTS (SELECT 1 FROM master.party_roles r WHERE r.party_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.grey_purchases g WHERE g.supplier_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM sales.sale_orders s WHERE s.buyer_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM production.processing_orders o WHERE o.processor_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM production.processing_bills b WHERE b.processor_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM production.stitching_orders o WHERE o.stitcher_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM production.stitching_bills b WHERE b.stitcher_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM accounting.journal_lines jl WHERE jl.party_id = p.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.locations l WHERE l.party_id = p.id);
+
+DELETE FROM master.designs d
+WHERE d.design_code = 'DZ-2PC'
+  AND NOT EXISTS (SELECT 1 FROM sales.sale_order_items i WHERE i.design_id = d.id)
+  AND NOT EXISTS (SELECT 1 FROM production.production_orders o WHERE o.design_id = d.id)
+  AND NOT EXISTS (SELECT 1 FROM production.stitching_orders o WHERE o.design_id = d.id)
+  AND NOT EXISTS (SELECT 1 FROM production.finished_goods_receipts r WHERE r.design_id = d.id);
+
+DELETE FROM master.items i
+WHERE i.item_code IN ('GREY-LAWN-A', 'PROC-LAWN-A', 'FG-2PC-SUIT')
+  AND NOT EXISTS (SELECT 1 FROM inventory.grey_purchase_lines l WHERE l.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.grey_lots l WHERE l.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM inventory.inventory_movements m WHERE m.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM sales.sale_order_items s WHERE s.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM production.production_bom b WHERE b.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM production.processing_receipt_lines r WHERE r.processed_item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM production.stitching_material_issues s WHERE s.item_id = i.id)
+  AND NOT EXISTS (SELECT 1 FROM production.finished_goods_receipts r WHERE r.item_id = i.id);
+
+DELETE FROM master.qualities q
+WHERE q.quality_code = 'LAWN-A'
+  AND NOT EXISTS (SELECT 1 FROM master.items i WHERE i.quality_id = q.id);
+
+DELETE FROM master.categories c
+WHERE c.category_code = 'LAWN'
+  AND NOT EXISTS (SELECT 1 FROM master.qualities q WHERE q.category_id = c.id)
+  AND NOT EXISTS (SELECT 1 FROM master.items i WHERE i.category_id = c.id)
+  AND NOT EXISTS (SELECT 1 FROM master.designs d WHERE d.category_id = c.id);

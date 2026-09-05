@@ -41,8 +41,8 @@ export default async function Sales() {
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "finishedItemCode", label: "Finished item", type: "select", options: finishedItems.map((f) => ({ value: f.item_code, label: f.item_name })) },
               { name: "customerCode", label: "Customer", type: "select", options: customers.map((c) => ({ value: c.party_code, label: c.party_name })) },
-              { name: "quantity", label: "Quantity (pcs)", type: "number", default: "960", step: "1" },
-              { name: "rate", label: "Rate / pc", type: "number", default: "1200", step: "0.01" },
+              { name: "quantity", label: "Quantity (pcs)", type: "number", step: "1" },
+              { name: "rate", label: "Rate / pc", type: "number", step: "0.01" },
               {
                 name: "paymentType",
                 label: "Payment",

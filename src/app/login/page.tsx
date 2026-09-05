@@ -16,12 +16,6 @@ export default async function LoginPage({
         <div className="login-brand">U.K Arts ERP</div>
         <p className="subtitle">Sign in to continue</p>
         <LoginForm next={next ?? "/"} />
-        <div className="login-hint">
-          <div>Demo accounts</div>
-          <div>
-            <code>admin / admin123</code> · <code>user / user123</code>
-          </div>
-        </div>
       </div>
     </div>
   );

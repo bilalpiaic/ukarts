@@ -41,7 +41,6 @@ export default async function Settings() {
           </p>
         </div>
 
-        {/* User Administration (moved here from the former Admin page) */}
         <div className="card">
           <ActionForm
             apiBase="/api/admin"
@@ -63,13 +62,23 @@ export default async function Settings() {
                   { value: "VIEWER", label: "Viewer" },
                 ],
               },
-              { name: "password", label: "Password", type: "text" },
+              { name: "password", label: "Password", type: "password" },
             ]}
           />
         </div>
         <div className="card">
-          <h2>User Administration</h2>
-          <AdminEntityTable kind="user" rows={users} />
+          <h2>Login accounts</h2>
+          <p className="subtitle">
+            Usernames and password changes are managed here. Stored passwords are
+            hashed and cannot be read back. Use <strong>Change password</strong> to
+            set or reset access. This information is never shown on the public
+            sign-in page.
+          </p>
+          {users.length === 0 ? (
+            <p className="subtitle">No users yet.</p>
+          ) : (
+            <AdminEntityTable kind="user" rows={users} />
+          )}
         </div>
       </div>
     </div>
