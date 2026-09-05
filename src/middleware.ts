@@ -38,6 +38,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (pathname === "/workspace") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   return NextResponse.next(passHeaders);
 }
 

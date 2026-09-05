@@ -9,6 +9,7 @@ function allLinks(role: string): NavLink[] {
 }
 
 function moduleKey(pathname: string, links: NavLink[]): string {
+  if (pathname === "/workspace") return "/";
   const exact = links.find((l) => l.href === pathname);
   if (exact) return exact.href;
   const nested = links
