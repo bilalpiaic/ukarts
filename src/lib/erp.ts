@@ -1346,7 +1346,7 @@ export async function dispatchSale(input: {
       [input.saleOrderId],
     );
 
-    return { amount };
+    return { amount, saleOrderId: input.saleOrderId };
   });
 }
 
@@ -1560,9 +1560,12 @@ export async function getSaleOrders() {
     buyer: string;
     status: string;
     amount: string;
+    attach_count: number;
   }>(
     `SELECT so.id, so.so_number, so.order_date::text, p.party_name AS buyer, so.status,
-            COALESCE(SUM(soi.amount), 0)::text AS amount
+            COALESCE(SUM(soi.amount), 0)::text AS amount,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'SALE_ORDER' AND df.entity_id = so.id) AS attach_count
      FROM sales.sale_orders so
      JOIN master.parties p ON p.id = so.buyer_id
      LEFT JOIN sales.sale_order_items soi ON soi.sale_order_id = so.id
@@ -1579,9 +1582,12 @@ export async function getProductionOrders() {
     planned_quantity: string;
     actual_quantity: string;
     status: string;
+    attach_count: number;
   }>(
     `SELECT po.id, po.po_number, so.so_number AS sale_order,
-            po.planned_quantity::text, COALESCE(po.actual_quantity,0)::text AS actual_quantity, po.status
+            po.planned_quantity::text, COALESCE(po.actual_quantity,0)::text AS actual_quantity, po.status,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'PRODUCTION_ORDER' AND df.entity_id = po.id) AS attach_count
      FROM production.production_orders po
      JOIN sales.sale_orders so ON so.id = po.sale_order_id
      ORDER BY po.created_at DESC`,
@@ -1644,6 +1650,66 @@ export async function getStitchingOrders() {
      JOIN master.parties p ON p.id = sto.stitcher_id
      LEFT JOIN production.production_orders pr ON pr.id = sto.production_order_id
      ORDER BY sto.issue_date DESC`,
+  );
+}
+
+export async function getGreyPurchases() {
+  return query<{
+    id: string;
+    purchase_number: string;
+    supplier: string;
+    purchase_date: string;
+    total_amount: string;
+    attach_count: number;
+  }>(
+    `SELECT gp.id, gp.purchase_number, p.party_name AS supplier, gp.purchase_date::text,
+            gp.total_amount::text,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'GREY_PURCHASE' AND df.entity_id = gp.id) AS attach_count
+     FROM inventory.grey_purchases gp
+     JOIN master.parties p ON p.id = gp.supplier_id
+     ORDER BY gp.purchase_date DESC, gp.purchase_number DESC
+     LIMIT 100`,
+  );
+}
+
+export async function getProcessingBills() {
+  return query<{
+    id: string;
+    bill_number: string;
+    processor: string;
+    bill_date: string;
+    net_payable: string;
+    attach_count: number;
+  }>(
+    `SELECT b.id, b.bill_number, p.party_name AS processor, b.bill_date::text,
+            b.net_payable::text,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'PROCESSING_BILL' AND df.entity_id = b.id) AS attach_count
+     FROM production.processing_bills b
+     JOIN master.parties p ON p.id = b.processor_id
+     ORDER BY b.bill_date DESC
+     LIMIT 100`,
+  );
+}
+
+export async function getStitchingBills() {
+  return query<{
+    id: string;
+    bill_number: string;
+    stitcher: string;
+    bill_date: string;
+    net_payable: string;
+    attach_count: number;
+  }>(
+    `SELECT b.id, b.bill_number, p.party_name AS stitcher, b.bill_date::text,
+            b.net_payable::text,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'STITCHING_BILL' AND df.entity_id = b.id) AS attach_count
+     FROM production.stitching_bills b
+     JOIN master.parties p ON p.id = b.stitcher_id
+     ORDER BY b.bill_date DESC
+     LIMIT 100`,
   );
 }
 
@@ -1940,10 +2006,13 @@ export async function getJournalEntriesList(range?: DateRange) {
     reference_type: string | null;
     status: string;
     total: string;
+    attach_count: number;
   }>(
     `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
             je.reference_type, je.status,
-            COALESCE(SUM(jl.debit), 0)::text AS total
+            COALESCE(SUM(jl.debit), 0)::text AS total,
+            (SELECT COUNT(*)::int FROM master.document_files df
+              WHERE df.entity_type = 'JOURNAL' AND df.entity_id = je.id) AS attach_count
      FROM accounting.journal_entries je
      LEFT JOIN accounting.journal_lines jl ON jl.journal_entry_id = je.id
      WHERE TRUE${dc.sql}

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ACTION_ATTACH } from "@/lib/attachment-types";
+import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
 
 export interface Field {
@@ -66,6 +68,8 @@ export function ActionForm({
   apiBase?: string;
 }) {
   const router = useRouter();
+  const attach = ACTION_ATTACH[action];
+  const pending = usePendingFiles();
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.name, initialValue(f)])),
   );
@@ -99,6 +103,13 @@ export function ActionForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
+      if (attach && pending.files.length > 0) {
+        const entityId =
+          attach.idFrom === "payload" ? payload[attach.idKey] : (data as Record<string, unknown>)[attach.idKey];
+        if (!entityId) throw new Error("Document saved, but no id was returned for attachments.");
+        await uploadAttachments(attach.entityType, String(entityId), pending.files.map((f) => f.file));
+        pending.clear();
+      }
       setMsg({
         kind: "ok",
         text: `${successText ?? "Posted successfully."}${summarize(data)}`,
@@ -135,6 +146,9 @@ export function ActionForm({
           )}
         </div>
       ))}
+      {attach && (
+        <AttachmentField files={pending.files} onAdd={pending.addFiles} onRemove={pending.remove} />
+      )}
       <button type="submit" disabled={disabled}>
         {busy ? "Posting…" : submitLabel}
       </button>

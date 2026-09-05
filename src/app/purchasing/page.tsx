@@ -1,8 +1,10 @@
 import { ActionForm } from "../action-form";
+import { AttachmentChips } from "../attachments";
 import { MultiLineForm } from "../multi-line-form";
 import {
   getAvailableGreyLots,
   getGreyItems,
+  getGreyPurchases,
   getGreyStock,
   getSuppliers,
 } from "@/lib/erp";
@@ -12,11 +14,12 @@ import { PrintButton } from "../print-button";
 export const dynamic = "force-dynamic";
 
 export default async function Purchasing() {
-  const [suppliers, items, lots, stock] = await Promise.all([
+  const [suppliers, items, lots, stock, purchases] = await Promise.all([
     getSuppliers(),
     getGreyItems(),
     getAvailableGreyLots(),
     getGreyStock(),
+    getGreyPurchases(),
   ]);
 
   return (
@@ -65,6 +68,38 @@ export default async function Purchasing() {
               { name: "rate", label: "Rate", type: "number", step: "0.01", numeric: true },
             ]}
           />
+        </div>
+
+        <div className="card full">
+          <h2>Grey Purchases / Bills</h2>
+          {purchases.length === 0 ? (
+            <p className="subtitle">No purchases yet.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill</th>
+                  <th>Date</th>
+                  <th>Supplier</th>
+                  <th className="num">Amount</th>
+                  <th>Docs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.purchase_number}</td>
+                    <td>{p.purchase_date}</td>
+                    <td>{p.supplier}</td>
+                    <td className="num">{money(p.total_amount)}</td>
+                    <td>
+                      <AttachmentChips entityType="GREY_PURCHASE" entityId={p.id} count={p.attach_count} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="card full">

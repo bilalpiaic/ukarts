@@ -481,6 +481,20 @@ CREATE TABLE IF NOT EXISTS audit.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Supporting scans/files on bills, sale orders, production orders, and vouchers.
+CREATE TABLE IF NOT EXISTS master.document_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id UUID NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(150) NOT NULL,
+    file_ext VARCHAR(20) NOT NULL,
+    byte_size INTEGER NOT NULL CHECK (byte_size > 0 AND byte_size <= 4194304),
+    content BYTEA NOT NULL,
+    uploaded_by UUID REFERENCES master.users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ---------------------------------------------------------------------------
 -- Functions
 -- ---------------------------------------------------------------------------
@@ -571,3 +585,5 @@ CREATE INDEX IF NOT EXISTS idx_journal_lines_account
     ON accounting.journal_lines(account_id);
 CREATE INDEX IF NOT EXISTS idx_journal_lines_party
     ON accounting.journal_lines(party_id);
+CREATE INDEX IF NOT EXISTS idx_document_files_entity
+    ON master.document_files(entity_type, entity_id);

@@ -1,20 +1,22 @@
 import { ActionForm } from "../action-form";
+import { AttachmentChips } from "../attachments";
 import {
   getAvailableGreyLots,
   getItemsByType,
   getPartiesByRole,
+  getProcessingBills,
   getProcessingOrderLots,
   getProcessingOrders,
   getProductionOrders,
   getSaleOrders,
 } from "@/lib/erp";
-import { qty } from "@/lib/format";
+import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function Processing() {
-  const [processors, processedItems, lots, procOrders, openLots, prodOrders, saleOrders] =
+  const [processors, processedItems, lots, procOrders, openLots, prodOrders, saleOrders, bills] =
     await Promise.all([
       getPartiesByRole("PROCESSOR"),
       getItemsByType("PROCESSED_CLOTH"),
@@ -23,6 +25,7 @@ export default async function Processing() {
       getProcessingOrderLots(),
       getProductionOrders(),
       getSaleOrders(),
+      getProcessingBills(),
     ]);
 
   const poOptions = prodOrders.map((p) => ({ value: p.id, label: `${p.po_number} (${p.sale_order})` }));
@@ -96,6 +99,38 @@ export default async function Processing() {
               { name: "date", label: "Date", type: "date" },
             ]}
           />
+        </div>
+
+        <div className="card full">
+          <h2>Processing Bills</h2>
+          {bills.length === 0 ? (
+            <p className="subtitle">No processing bills yet.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill</th>
+                  <th>Date</th>
+                  <th>Processor</th>
+                  <th className="num">Net payable</th>
+                  <th>Docs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bills.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.bill_number}</td>
+                    <td>{b.bill_date}</td>
+                    <td>{b.processor}</td>
+                    <td className="num">{money(b.net_payable)}</td>
+                    <td>
+                      <AttachmentChips entityType="PROCESSING_BILL" entityId={b.id} count={b.attach_count} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="card full">

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
+import { listAttachments } from "@/lib/attachments";
 import { getJournalEntry, getOrganization } from "@/lib/erp";
 import { money } from "@/lib/format";
+import { AttachmentChips, SavedAttachmentList } from "../../attachments";
 import { PrintButton } from "../../print-button";
 import { VoucherActions } from "../voucher-actions";
 
@@ -14,10 +16,11 @@ export default async function VoucherDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, org, session] = await Promise.all([
+  const [detail, org, session, files] = await Promise.all([
     getJournalEntry(id),
     getOrganization(),
     getSession(),
+    listAttachments("JOURNAL", id),
   ]);
   if (!detail.header) notFound();
   const h = detail.header;
@@ -102,6 +105,15 @@ export default async function VoucherDetail({
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      <div className="card full no-print">
+        <h2>Attachments</h2>
+        {files.length === 0 ? (
+          <p className="subtitle">No files on this voucher.</p>
+        ) : (
+          <SavedAttachmentList files={files} />
+        )}
       </div>
     </div>
   );

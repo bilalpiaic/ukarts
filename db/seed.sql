@@ -84,6 +84,7 @@ BEGIN
   UPDATE inventory.locations SET party_id = NULL WHERE party_id IS NOT NULL;
 
   TRUNCATE TABLE
+    master.document_files,
     audit.audit_logs,
     production.production_costs,
     production.stitcher_material_settlements,

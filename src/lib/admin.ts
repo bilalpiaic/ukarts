@@ -370,6 +370,10 @@ export async function deleteJournalEntry(input: { id: string }) {
     if (rows.rows[0].status !== "DRAFT") {
       throw new Error("Only UNPOSTED (draft) vouchers can be deleted. Unpost it first.");
     }
+    await client.query(
+      "DELETE FROM master.document_files WHERE entity_type='JOURNAL' AND entity_id=$1",
+      [input.id],
+    );
     await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);
     await client.query("DELETE FROM accounting.journal_entries WHERE id=$1", [input.id]);
     return { ok: true };
@@ -422,6 +426,10 @@ async function deletePostings(
 
 export async function deleteDocument(input: { docType: string; id: string }) {
   return withTransaction(async (client) => {
+    await client.query(
+      "DELETE FROM master.document_files WHERE entity_type=$1 AND entity_id=$2",
+      [input.docType, input.id],
+    );
     switch (input.docType) {
       case "JOURNAL": {
         await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);

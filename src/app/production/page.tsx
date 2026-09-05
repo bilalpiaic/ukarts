@@ -1,4 +1,5 @@
 import { ActionForm } from "../action-form";
+import { AttachmentChips } from "../attachments";
 import {
   getAvailableGreyLots,
   getDesigns,
@@ -99,6 +100,7 @@ export default async function Production() {
                   <th>Customer</th>
                   <th>Status</th>
                   <th className="num">Amount</th>
+                  <th>Docs</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,6 +111,9 @@ export default async function Production() {
                     <td>{s.buyer}</td>
                     <td><span className="pill">{s.status}</span></td>
                     <td className="num">{money(s.amount)}</td>
+                    <td>
+                      <AttachmentChips entityType="SALE_ORDER" entityId={s.id} count={s.attach_count} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -129,6 +134,7 @@ export default async function Production() {
                   <th className="num">Planned</th>
                   <th className="num">Actual</th>
                   <th>Status</th>
+                  <th>Docs</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,6 +145,9 @@ export default async function Production() {
                     <td className="num">{qty(p.planned_quantity)}</td>
                     <td className="num">{qty(p.actual_quantity)}</td>
                     <td><span className="pill">{p.status}</span></td>
+                    <td>
+                      <AttachmentChips entityType="PRODUCTION_ORDER" entityId={p.id} count={p.attach_count} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
