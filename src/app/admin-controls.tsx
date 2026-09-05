@@ -47,7 +47,42 @@ export function DeleteButton({
   );
 }
 
-type Kind = "party" | "item" | "user";
+/** Generic admin action button (e.g. unpost) with confirmation. */
+export function ActionButton({
+  endpoint,
+  payload,
+  label,
+  confirmText,
+  ghost = true,
+}: {
+  endpoint: string;
+  payload: Record<string, unknown>;
+  label: string;
+  confirmText?: string;
+  ghost?: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  async function onClick() {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setBusy(true);
+    try {
+      await post(endpoint, payload);
+      router.refresh();
+    } catch (e) {
+      window.alert((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button className={ghost ? "btn-ghost" : ""} disabled={busy} onClick={onClick}>
+      {busy ? "…" : label}
+    </button>
+  );
+}
+
+type Kind = "party" | "item" | "user" | "account";
 
 interface Row {
   id: string;
@@ -57,6 +92,7 @@ interface Row {
 const STATUS_OPTS = ["ACTIVE", "INACTIVE"];
 const ITEM_TYPES = ["GREY_CLOTH", "PROCESSED_CLOTH", "FINISHED_GOOD", "OTHER"];
 const ROLES = ["ADMIN", "USER", "ACCOUNTANT", "INVENTORY_MANAGER", "PRODUCTION_MANAGER", "SALES_USER", "VIEWER"];
+const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
 
 export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
   const router = useRouter();
@@ -86,6 +122,10 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         payload.item_name = draft.item_name;
         payload.item_type = draft.item_type;
         payload.status = draft.status;
+      } else if (kind === "account") {
+        payload.account_name = draft.account_name;
+        payload.account_type = draft.account_type;
+        payload.status = draft.status;
       } else {
         payload.full_name = draft.full_name;
         payload.role = draft.role;
@@ -107,7 +147,9 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
       ? ["Code", "Name", "Roles", "Status", ""]
       : kind === "item"
         ? ["Code", "Name", "Type", "Status", ""]
-        : ["Username", "Name", "Role", "Status", ""];
+        : kind === "account"
+          ? ["Code", "Name", "Type", "Status", ""]
+          : ["Username", "Name", "Role", "Status", ""];
 
   return (
     <>
@@ -164,6 +206,36 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                         </select>
                       ) : (
                         row.item_type
+                      )}
+                    </td>
+                    <td>
+                      {isEdit ? (
+                        <select value={draft.status ?? ""} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>
+                          {STATUS_OPTS.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        row.status
+                      )}
+                    </td>
+                  </>
+                )}
+                {kind === "account" && (
+                  <>
+                    <td>{row.account_code}</td>
+                    <td>
+                      {isEdit ? (
+                        <input value={draft.account_name ?? ""} onChange={(e) => setDraft({ ...draft, account_name: e.target.value })} />
+                      ) : (
+                        row.account_name
+                      )}
+                    </td>
+                    <td>
+                      {isEdit ? (
+                        <select value={draft.account_type ?? ""} onChange={(e) => setDraft({ ...draft, account_type: e.target.value })}>
+                          {ACCOUNT_TYPES.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        row.account_type
                       )}
                     </td>
                     <td>

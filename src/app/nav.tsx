@@ -10,12 +10,13 @@ const baseLinks = [
   { href: "/processing", label: "Processing" },
   { href: "/stitching", label: "Stitching" },
   { href: "/sales", label: "Sales" },
+  { href: "/vouchers", label: "Vouchers" },
   { href: "/reports", label: "Reports" },
   { href: "/workspace", label: "Workspace" },
 ];
 
 const adminLinks = [
-  { href: "/admin", label: "Admin" },
+  { href: "/coa", label: "COA" },
   { href: "/settings", label: "Settings" },
 ];
 

@@ -136,23 +136,44 @@ export async function recordOwnerInvestment(input: OwnerInvestmentInput) {
   });
 }
 
-export interface GreyPurchaseInput {
-  supplierId: string;
+export interface GreyPurchaseLineInput {
   itemId: string;
   quantity: number;
   rate: number;
+}
+
+export interface GreyPurchaseInput {
+  supplierId: string;
   date: string;
+  /** Single-line shape (kept for backward compatibility). */
+  itemId?: string;
+  quantity?: number;
+  rate?: number;
+  /** Multi-line shape — enter several grey items on one purchase. */
+  lines?: GreyPurchaseLineInput[];
 }
 
 /**
- * Grey Purchase: creates purchase + lot, an inventory movement into the owner
- * grey store, and a balanced journal (Dr Grey Inventory, Cr Supplier Payable).
+ * Grey Purchase: creates a purchase with one or more item lines, a grey lot and
+ * inventory movement per line into the owner grey store, and a single balanced
+ * journal (Dr Grey Inventory, Cr Supplier Payable) for the purchase total.
  * The whole flow runs in one transaction (all-or-nothing).
  */
 export async function recordGreyPurchase(input: GreyPurchaseInput) {
-  if (!(input.quantity > 0)) throw new Error("Quantity must be greater than zero.");
-  if (!(input.rate > 0)) throw new Error("Rate must be greater than zero.");
-  const amount = Number((input.quantity * input.rate).toFixed(2));
+  const rawLines: GreyPurchaseLineInput[] =
+    input.lines && input.lines.length > 0
+      ? input.lines
+      : [{ itemId: input.itemId as string, quantity: input.quantity as number, rate: input.rate as number }];
+
+  const lines = rawLines
+    .map((l) => ({ itemId: l.itemId, quantity: Number(l.quantity), rate: Number(l.rate) }))
+    .filter((l) => l.itemId && l.quantity > 0 && l.rate > 0);
+
+  if (lines.length === 0) {
+    throw new Error("Enter at least one grey line with an item, quantity and rate.");
+  }
+
+  const total = round2(lines.reduce((s, l) => s + l.quantity * l.rate, 0));
 
   return withTransaction(async (client) => {
     const purchaseRes = await client.query(
@@ -160,27 +181,9 @@ export async function recordGreyPurchase(input: GreyPurchaseInput) {
          (purchase_number, supplier_id, purchase_date, total_amount, status)
        VALUES ($1, $2, $3, $4, 'POSTED')
        RETURNING id`,
-      [docNumber("GP"), input.supplierId, input.date, amount],
+      [docNumber("GP"), input.supplierId, input.date, total],
     );
     const purchaseId = purchaseRes.rows[0].id as string;
-
-    const lineRes = await client.query(
-      `INSERT INTO inventory.grey_purchase_lines
-         (purchase_id, item_id, quantity, rate, amount)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id`,
-      [purchaseId, input.itemId, input.quantity, input.rate, amount],
-    );
-    const lineId = lineRes.rows[0].id as string;
-
-    const lotRes = await client.query(
-      `INSERT INTO inventory.grey_lots
-         (lot_number, purchase_line_id, item_id, original_quantity, purchase_rate, original_value, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'OPEN')
-       RETURNING id`,
-      [docNumber("LOT"), lineId, input.itemId, input.quantity, input.rate, amount],
-    );
-    const lotId = lotRes.rows[0].id as string;
 
     const locRes = await client.query(
       "SELECT id FROM inventory.locations WHERE location_code = 'OWNER_GREY'",
@@ -200,41 +203,44 @@ export async function recordGreyPurchase(input: GreyPurchaseInput) {
     );
     const txnId = txnRes.rows[0].id as string;
 
-    await client.query(
-      `INSERT INTO inventory.inventory_movements
-         (inventory_transaction_id, movement_date, item_id, lot_id, to_location_id, quantity, rate, value)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        txnId,
-        input.date,
-        input.itemId,
-        lotId,
-        ownerGreyLocationId,
-        input.quantity,
-        input.rate,
-        amount,
-      ],
-    );
-
-    const supplierPartyRes = await client.query(
-      "SELECT id FROM master.parties WHERE id = $1",
-      [input.supplierId],
-    );
-    const supplierPartyId =
-      supplierPartyRes.rows.length > 0 ? (supplierPartyRes.rows[0].id as string) : null;
+    const lotIds: string[] = [];
+    for (const l of lines) {
+      const amount = round2(l.quantity * l.rate);
+      const lineRes = await client.query(
+        `INSERT INTO inventory.grey_purchase_lines
+           (purchase_id, item_id, quantity, rate, amount)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [purchaseId, l.itemId, l.quantity, l.rate, amount],
+      );
+      const lineId = lineRes.rows[0].id as string;
+      const lotRes = await client.query(
+        `INSERT INTO inventory.grey_lots
+           (lot_number, purchase_line_id, item_id, original_quantity, purchase_rate, original_value, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'OPEN') RETURNING id`,
+        [docNumber("LOT"), lineId, l.itemId, l.quantity, l.rate, amount],
+      );
+      const lotId = lotRes.rows[0].id as string;
+      lotIds.push(lotId);
+      await client.query(
+        `INSERT INTO inventory.inventory_movements
+           (inventory_transaction_id, movement_date, item_id, lot_id, to_location_id, quantity, rate, value)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [txnId, input.date, l.itemId, lotId, ownerGreyLocationId, l.quantity, l.rate, amount],
+      );
+    }
 
     const entryId = await postAutomaticJournal(client, {
       transactionType: "GREY_PURCHASE",
-      amount,
+      amount: total,
       voucherDate: input.date,
       voucherType: "GREY_PURCHASE",
       referenceType: "GREY_PURCHASE",
       referenceId: purchaseId,
-      description: `Grey purchase ${input.quantity} @ ${input.rate}`,
-      creditPartyId: supplierPartyId,
+      description: `Grey purchase — ${lines.length} line(s), total ${total}`,
+      creditPartyId: input.supplierId,
     });
 
-    return { purchaseId, lotId, journalEntryId: entryId, amount };
+    return { purchaseId, lotIds, journalEntryId: entryId, amount: total, lines: lines.length };
   });
 }
 
@@ -331,6 +337,7 @@ export async function getGreyStock(): Promise<GreyStockRow[]> {
 }
 
 export interface JournalEntryRow {
+  id: string;
   voucher_number: string;
   voucher_date: string;
   voucher_type: string;
@@ -341,7 +348,7 @@ export interface JournalEntryRow {
 
 export async function getRecentJournalEntries(): Promise<JournalEntryRow[]> {
   return query<JournalEntryRow>(
-    `SELECT je.voucher_number, je.voucher_date::text, je.voucher_type,
+    `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
             je.description, je.status,
             COALESCE(SUM(jl.debit), 0)::text AS total
      FROM accounting.journal_entries je
@@ -1406,13 +1413,14 @@ export async function getPartyLedgers(range?: DateRange) {
 export async function getJournalRegister(range?: DateRange) {
   const dc = dateClause(range, 1);
   return query<{
+    id: string;
     voucher_number: string;
     voucher_date: string;
     voucher_type: string;
     description: string;
     total: string;
   }>(
-    `SELECT je.voucher_number, je.voucher_date::text, je.voucher_type,
+    `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
             je.description, COALESCE(SUM(jl.debit), 0)::text AS total
      FROM accounting.journal_entries je
      LEFT JOIN accounting.journal_lines jl ON jl.journal_entry_id = je.id
@@ -1687,4 +1695,321 @@ export async function getKpis() {
     payables: map.payables ?? 0,
     receivables: map.receivables ?? 0,
   };
+}
+
+// ===========================================================================
+// Chart of accounts + manual journal vouchers (conventional double entry)
+// ===========================================================================
+
+export interface AccountRow {
+  id: string;
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  is_postable: boolean;
+  status: string;
+}
+
+export async function listAccounts(): Promise<AccountRow[]> {
+  return query<AccountRow>(
+    `SELECT id, account_code, account_name, account_type, is_postable, status
+     FROM accounting.accounts
+     ORDER BY account_code`,
+  );
+}
+
+/** Postable accounts, for the voucher line LOV. */
+export async function getPostableAccounts() {
+  return query<{ account_code: string; account_name: string; account_type: string }>(
+    `SELECT account_code, account_name, account_type
+     FROM accounting.accounts
+     WHERE is_postable = TRUE AND status = 'ACTIVE'
+     ORDER BY account_code`,
+  );
+}
+
+/** All parties (any role), for the optional party LOV on voucher lines. */
+export async function getAllParties() {
+  return query<{ party_code: string; party_name: string }>(
+    `SELECT party_code, party_name FROM master.parties
+     WHERE status = 'ACTIVE' ORDER BY party_name`,
+  );
+}
+
+export interface ManualJournalLineInput {
+  accountCode: string;
+  partyCode?: string | null;
+  debit?: number;
+  credit?: number;
+  description?: string;
+}
+
+function normalizeManualLines(lines: ManualJournalLineInput[]) {
+  const clean = (lines ?? [])
+    .map((l) => ({
+      accountCode: l.accountCode,
+      partyCode: l.partyCode || null,
+      debit: round2(Number(l.debit ?? 0)),
+      credit: round2(Number(l.credit ?? 0)),
+      description: l.description || null,
+    }))
+    .filter((l) => l.accountCode && (l.debit > 0 || l.credit > 0));
+
+  if (clean.length < 2) {
+    throw new Error("A voucher needs at least two lines with an account and an amount.");
+  }
+  for (const l of clean) {
+    if (l.debit > 0 && l.credit > 0) {
+      throw new Error("Each line may carry either a debit or a credit, not both.");
+    }
+  }
+  const totalDebit = round2(clean.reduce((s, l) => s + l.debit, 0));
+  const totalCredit = round2(clean.reduce((s, l) => s + l.credit, 0));
+  if (Math.abs(totalDebit - totalCredit) > 0.005) {
+    throw new Error(
+      `Voucher is not balanced — total debit ${totalDebit} vs total credit ${totalCredit}.`,
+    );
+  }
+  return { clean, totalDebit, totalCredit };
+}
+
+async function insertManualLines(
+  client: PoolClient,
+  entryId: string,
+  clean: ReturnType<typeof normalizeManualLines>["clean"],
+) {
+  let n = 0;
+  for (const l of clean) {
+    n += 1;
+    const accountId = await accountIdByCode(client, l.accountCode);
+    const partyId = l.partyCode ? await partyIdByCode(client, l.partyCode) : null;
+    await client.query(
+      `INSERT INTO accounting.journal_lines
+         (journal_entry_id, line_number, account_id, party_id, debit, credit, description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [entryId, n, accountId, partyId, l.debit, l.credit, l.description],
+    );
+  }
+}
+
+/** Create a manual multi-line journal voucher; optionally post it immediately. */
+export async function createManualJournal(input: {
+  voucherDate: string;
+  description?: string;
+  post?: boolean;
+  lines: ManualJournalLineInput[];
+}) {
+  const { clean, totalDebit } = normalizeManualLines(input.lines);
+  return withTransaction(async (client) => {
+    const entryRes = await client.query(
+      `INSERT INTO accounting.journal_entries
+         (voucher_number, voucher_date, voucher_type, reference_type, description)
+       VALUES ($1, $2, 'MANUAL', 'MANUAL', $3) RETURNING id, voucher_number`,
+      [docNumber("JV"), input.voucherDate, input.description ?? "Manual journal voucher"],
+    );
+    const entryId = entryRes.rows[0].id as string;
+    await insertManualLines(client, entryId, clean);
+    if (input.post) {
+      const adminId = await getAdminUserId(client);
+      await client.query("SELECT accounting.post_journal_entry($1, $2)", [entryId, adminId]);
+    }
+    return {
+      journalEntryId: entryId,
+      voucherNumber: entryRes.rows[0].voucher_number as string,
+      status: input.post ? "POSTED" : "DRAFT",
+      amount: totalDebit,
+    };
+  });
+}
+
+/** Edit a DRAFT manual voucher (replaces its lines). Posted vouchers must be unposted first. */
+export async function updateManualJournal(input: {
+  id: string;
+  voucherDate: string;
+  description?: string;
+  post?: boolean;
+  lines: ManualJournalLineInput[];
+}) {
+  const { clean, totalDebit } = normalizeManualLines(input.lines);
+  return withTransaction(async (client) => {
+    const cur = await client.query(
+      "SELECT status, reference_type FROM accounting.journal_entries WHERE id=$1",
+      [input.id],
+    );
+    if (cur.rows.length === 0) throw new Error("Voucher not found.");
+    if (cur.rows[0].status !== "DRAFT") {
+      throw new Error("Only DRAFT vouchers can be edited. Ask an admin to unpost it first.");
+    }
+    if (cur.rows[0].reference_type !== "MANUAL") {
+      throw new Error("Only manual vouchers can be edited here; this one was generated by a transaction.");
+    }
+    await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);
+    await client.query(
+      "UPDATE accounting.journal_entries SET voucher_date=$2, description=$3 WHERE id=$1",
+      [input.id, input.voucherDate, input.description ?? "Manual journal voucher"],
+    );
+    await insertManualLines(client, input.id, clean);
+    if (input.post) {
+      const adminId = await getAdminUserId(client);
+      await client.query("SELECT accounting.post_journal_entry($1, $2)", [input.id, adminId]);
+    }
+    return { journalEntryId: input.id, status: input.post ? "POSTED" : "DRAFT", amount: totalDebit };
+  });
+}
+
+/** Post a DRAFT voucher (validates debit = credit). Any authenticated user may post. */
+export async function postJournalEntry(input: { id: string }) {
+  return withTransaction(async (client) => {
+    const cur = await client.query(
+      "SELECT status FROM accounting.journal_entries WHERE id=$1",
+      [input.id],
+    );
+    if (cur.rows.length === 0) throw new Error("Voucher not found.");
+    if (cur.rows[0].status === "POSTED") throw new Error("Voucher is already posted.");
+    const adminId = await getAdminUserId(client);
+    await client.query("SELECT accounting.post_journal_entry($1, $2)", [input.id, adminId]);
+    return { ok: true, status: "POSTED" };
+  });
+}
+
+export interface JournalDetail {
+  header: {
+    id: string;
+    voucher_number: string;
+    voucher_date: string;
+    voucher_type: string;
+    reference_type: string | null;
+    description: string | null;
+    status: string;
+    posted_at: string | null;
+  } | null;
+  lines: {
+    line_number: number;
+    account_code: string;
+    account_name: string;
+    party_code: string | null;
+    party_name: string | null;
+    debit: string;
+    credit: string;
+    description: string | null;
+  }[];
+  totalDebit: number;
+  totalCredit: number;
+  editable: boolean;
+}
+
+export async function getJournalEntry(id: string): Promise<JournalDetail> {
+  const headerRows = await query<JournalDetail["header"] & object>(
+    `SELECT id, voucher_number, voucher_date::text, voucher_type, reference_type,
+            description, status, posted_at::text
+     FROM accounting.journal_entries WHERE id = $1`,
+    [id],
+  );
+  const header = headerRows[0] ?? null;
+  const lines = header
+    ? await query<JournalDetail["lines"][number]>(
+        `SELECT jl.line_number, a.account_code, a.account_name, p.party_code, p.party_name,
+                jl.debit::text, jl.credit::text, jl.description
+         FROM accounting.journal_lines jl
+         JOIN accounting.accounts a ON a.id = jl.account_id
+         LEFT JOIN master.parties p ON p.id = jl.party_id
+         WHERE jl.journal_entry_id = $1
+         ORDER BY jl.line_number`,
+        [id],
+      )
+    : [];
+  const totalDebit = lines.reduce((s, l) => s + Number(l.debit), 0);
+  const totalCredit = lines.reduce((s, l) => s + Number(l.credit), 0);
+  return {
+    header,
+    lines,
+    totalDebit,
+    totalCredit,
+    editable:
+      !!header && header.status === "DRAFT" && header.reference_type === "MANUAL",
+  };
+}
+
+export async function getJournalEntriesList(range?: DateRange) {
+  const dc = dateClause(range, 1);
+  return query<{
+    id: string;
+    voucher_number: string;
+    voucher_date: string;
+    voucher_type: string;
+    reference_type: string | null;
+    status: string;
+    total: string;
+  }>(
+    `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
+            je.reference_type, je.status,
+            COALESCE(SUM(jl.debit), 0)::text AS total
+     FROM accounting.journal_entries je
+     LEFT JOIN accounting.journal_lines jl ON jl.journal_entry_id = je.id
+     WHERE TRUE${dc.sql}
+     GROUP BY je.id
+     ORDER BY je.created_at DESC
+     LIMIT 200`,
+    dc.params,
+  );
+}
+
+/** Account ledger — every posted posting to one account (source drill-down). */
+export async function getAccountLedger(code: string, range?: DateRange) {
+  const dc = dateClause(range, 2);
+  const accountRows = await query<{ account_code: string; account_name: string; account_type: string }>(
+    "SELECT account_code, account_name, account_type FROM accounting.accounts WHERE account_code=$1",
+    [code],
+  );
+  const rows = await query<{
+    id: string;
+    voucher_number: string;
+    voucher_date: string;
+    voucher_type: string;
+    party_name: string | null;
+    description: string | null;
+    debit: string;
+    credit: string;
+  }>(
+    `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
+            p.party_name, jl.description, jl.debit::text, jl.credit::text
+     FROM accounting.journal_lines jl
+     JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status='POSTED'
+     JOIN accounting.accounts a ON a.id = jl.account_id AND a.account_code = $1
+     LEFT JOIN master.parties p ON p.id = jl.party_id
+     WHERE TRUE${dc.sql}
+     ORDER BY je.voucher_date, je.created_at`,
+    [code, ...dc.params],
+  );
+  return { account: accountRows[0] ?? null, rows };
+}
+
+/** Party ledger — every posted posting for one party (source drill-down). */
+export async function getPartyLedgerDetail(code: string, range?: DateRange) {
+  const dc = dateClause(range, 2);
+  const partyRows = await query<{ party_code: string; party_name: string }>(
+    "SELECT party_code, party_name FROM master.parties WHERE party_code=$1",
+    [code],
+  );
+  const rows = await query<{
+    id: string;
+    voucher_number: string;
+    voucher_date: string;
+    voucher_type: string;
+    account_name: string;
+    description: string | null;
+    debit: string;
+    credit: string;
+  }>(
+    `SELECT je.id, je.voucher_number, je.voucher_date::text, je.voucher_type,
+            a.account_name, jl.description, jl.debit::text, jl.credit::text
+     FROM accounting.journal_lines jl
+     JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status='POSTED'
+     JOIN master.parties p ON p.id = jl.party_id AND p.party_code = $1
+     JOIN accounting.accounts a ON a.id = jl.account_id
+     WHERE TRUE${dc.sql}
+     ORDER BY je.voucher_date, je.created_at`,
+    [code, ...dc.params],
+  );
+  return { party: partyRows[0] ?? null, rows };
 }

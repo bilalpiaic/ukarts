@@ -1,4 +1,5 @@
 import { ActionForm } from "../action-form";
+import { MultiLineForm } from "../multi-line-form";
 import {
   getAvailableGreyLots,
   getGreyItems,
@@ -38,28 +39,30 @@ export default async function Purchasing() {
           />
         </div>
 
-        <div className="card">
-          <ActionForm
+        <div className="card full">
+          <MultiLineForm
             action="grey-purchase"
-            title="Record Grey Purchase"
+            title="Record Grey Purchase (multiple items)"
             submitLabel="Record Grey Purchase"
-            successText="Grey purchase posted; grey lot created."
-            fields={[
+            successText="Grey purchase posted; one grey lot created per line."
+            headerFields={[
               {
                 name: "supplierId",
                 label: "Supplier",
                 type: "select",
                 options: suppliers.map((s) => ({ value: s.id, label: `${s.party_name} (${s.party_code})` })),
               },
+              { name: "date", label: "Date", type: "date" },
+            ]}
+            lineColumns={[
               {
                 name: "itemId",
                 label: "Grey item",
                 type: "select",
                 options: items.map((i) => ({ value: i.id, label: `${i.item_name} (${i.item_code})` })),
               },
-              { name: "quantity", label: "Quantity (meters)", type: "number", default: "6000", step: "0.0001" },
-              { name: "rate", label: "Rate", type: "number", default: "100", step: "0.01" },
-              { name: "date", label: "Date", type: "date" },
+              { name: "quantity", label: "Quantity (m)", type: "number", step: "0.0001", numeric: true },
+              { name: "rate", label: "Rate", type: "number", step: "0.01", numeric: true },
             ]}
           />
         </div>

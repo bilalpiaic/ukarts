@@ -223,6 +223,97 @@ export async function deleteUser(input: { id: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Chart of Accounts
+// ---------------------------------------------------------------------------
+const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
+
+export async function createAccount(input: {
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  is_postable?: boolean | string;
+}) {
+  const type = String(input.account_type ?? "").toUpperCase();
+  if (!ACCOUNT_TYPES.includes(type)) {
+    throw new Error(`Account type must be one of ${ACCOUNT_TYPES.join(", ")}.`);
+  }
+  if (!input.account_code?.trim()) throw new Error("Account code is required.");
+  const postable =
+    input.is_postable === undefined ? true : input.is_postable === true || input.is_postable === "true" || input.is_postable === "YES";
+  const res = await query<{ id: string }>(
+    `INSERT INTO accounting.accounts (account_code, account_name, account_type, is_postable)
+     VALUES ($1,$2,$3,$4) RETURNING id`,
+    [input.account_code.trim(), input.account_name, type, postable],
+  );
+  return { id: res[0].id };
+}
+
+export async function updateAccount(input: {
+  id: string;
+  account_name: string;
+  account_type: string;
+  status?: string;
+}) {
+  const type = String(input.account_type ?? "").toUpperCase();
+  if (!ACCOUNT_TYPES.includes(type)) {
+    throw new Error(`Account type must be one of ${ACCOUNT_TYPES.join(", ")}.`);
+  }
+  await query(
+    `UPDATE accounting.accounts SET account_name=$1, account_type=$2, status=COALESCE($3,status) WHERE id=$4`,
+    [input.account_name, type, input.status, input.id],
+  );
+  return { ok: true };
+}
+
+export async function deleteAccount(input: { id: string }) {
+  const used = await query<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM accounting.journal_lines WHERE account_id=$1",
+    [input.id],
+  );
+  if (Number(used[0]?.n ?? 0) > 0) {
+    throw new Error("Cannot delete: this account already has journal postings. Deactivate it instead.");
+  }
+  await query("DELETE FROM accounting.accounts WHERE id=$1", [input.id]);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Journal voucher lifecycle (admin): unpost & delete drafts
+// ---------------------------------------------------------------------------
+
+/** Admin: move a POSTED voucher back to DRAFT so it becomes editable again. */
+export async function unpostJournalEntry(input: { id: string }) {
+  const rows = await query<{ status: string }>(
+    "SELECT status FROM accounting.journal_entries WHERE id=$1",
+    [input.id],
+  );
+  if (rows.length === 0) throw new Error("Voucher not found.");
+  if (rows[0].status !== "POSTED") throw new Error("Only POSTED vouchers can be unposted.");
+  await query(
+    "UPDATE accounting.journal_entries SET status='DRAFT', posted_at=NULL, posted_by=NULL WHERE id=$1",
+    [input.id],
+  );
+  return { ok: true, status: "DRAFT" };
+}
+
+/** Admin: delete an UNPOSTED (draft) voucher and its lines. */
+export async function deleteJournalEntry(input: { id: string }) {
+  return withTransaction(async (client) => {
+    const rows = await client.query(
+      "SELECT status FROM accounting.journal_entries WHERE id=$1",
+      [input.id],
+    );
+    if (rows.rows.length === 0) throw new Error("Voucher not found.");
+    if (rows.rows[0].status !== "DRAFT") {
+      throw new Error("Only UNPOSTED (draft) vouchers can be deleted. Unpost it first.");
+    }
+    await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);
+    await client.query("DELETE FROM accounting.journal_entries WHERE id=$1", [input.id]);
+    return { ok: true };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Document void / delete (admin). Removes the document and its postings in one
 // transaction; FK constraints prevent deleting documents still referenced
 // downstream (the transaction rolls back with a clear message).

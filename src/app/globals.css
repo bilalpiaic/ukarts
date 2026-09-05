@@ -5,32 +5,32 @@
    ========================================================================== */
 
 :root {
-  /* Paper & surfaces */
-  --paper: #efe4cb;
-  --paper-panel: #f6eed9;
-  --paper-panel-2: #f1e6cc;
-  --paper-sunk: #e8dabb;
+  /* Paper & surfaces — a further lighter parchment tone */
+  --paper: #f7f2e6;
+  --paper-panel: #fdfaf1;
+  --paper-panel-2: #f5efe0;
+  --paper-sunk: #efe7d3;
 
-  /* Ink & lines */
-  --ink: #2f2618;
-  --ink-soft: #6d5c43;
-  --ink-faint: #907c5e;
-  --line: #d7c19a;
-  --line-strong: #c2a877;
+  /* Ink & lines — jet-black text on parchment */
+  --ink: #0b0b0b;
+  --ink-soft: #1c1c1c;
+  --ink-faint: #3a3a3a;
+  --line: #ddcba6;
+  --line-strong: #c9b184;
 
-  /* Accents (aged) */
+  /* Accents (aged) — used only for borders / rules / small marks */
   --brass: #8a5a2b;
-  --brass-deep: #6f4520;
-  --ledger-green: #3f6138;
+  --brass-deep: #5f3c1b;
+  --ledger-green: #2f5330;
   --ledger-green-soft: #5c7a4e;
-  --oxblood: #8f2f2a;
+  --oxblood: #862420;
 
   --accent: var(--brass);
   --accent-2: var(--ledger-green);
   --danger: var(--oxblood);
 
-  --radius: 10px;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 24px rgba(74, 56, 30, 0.12);
+  --radius: 8px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 6px 18px rgba(74, 56, 30, 0.1);
 
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
     "Times New Roman", serif;
@@ -72,12 +72,26 @@ body {
 }
 
 a {
-  color: var(--brass-deep);
+  color: var(--ink);
   text-decoration: none;
 }
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Drill-down links inside reports/ledgers — jet black, ledger-underlined */
+.src-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+.src-link:hover {
+  text-decoration-color: var(--brass);
+  background: rgba(138, 90, 43, 0.08);
 }
 
 h1,
@@ -253,10 +267,10 @@ button:disabled {
 .card h2 {
   font-size: 13px;
   margin: 0 0 14px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--brass-deep);
-  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  border-bottom: 2px solid var(--line-strong);
   padding-bottom: 8px;
   font-weight: 700;
 }
@@ -284,22 +298,32 @@ table {
   border-collapse: collapse;
   font-size: clamp(12px, 1.1vw, 13.5px);
   min-width: 480px;
+  border: 1px solid var(--line-strong);
 }
 
 th,
 td {
   text-align: left;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--ink);
+}
+
+th:last-child,
+td:last-child {
+  border-right: none;
 }
 
 thead th {
-  color: var(--brass-deep);
+  color: var(--ink);
   font-weight: 700;
   border-bottom: 2px solid var(--line-strong);
   background: var(--paper-panel-2);
   position: sticky;
   top: 0;
+  font-size: 0.92em;
+  letter-spacing: 0.02em;
 }
 
 tbody tr:nth-child(even) {
@@ -618,6 +642,137 @@ code {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* -------------------------------------------------------------------------
+   Status pills (posted / draft / void)
+   ------------------------------------------------------------------------- */
+.pill.posted {
+  background: rgba(47, 83, 48, 0.14);
+  color: var(--ledger-green);
+  border-color: rgba(47, 83, 48, 0.4);
+}
+
+.pill.draft {
+  background: rgba(138, 90, 43, 0.16);
+  color: var(--brass-deep);
+  border-color: var(--line-strong);
+}
+
+.pill.void {
+  background: rgba(134, 36, 32, 0.12);
+  color: var(--oxblood);
+  border-color: rgba(134, 36, 32, 0.35);
+}
+
+/* -------------------------------------------------------------------------
+   Multi-line voucher / document line editor
+   ------------------------------------------------------------------------- */
+.lines-table {
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.lines-table td,
+.lines-table th {
+  padding: 4px 6px;
+}
+
+.lines-table input,
+.lines-table select,
+.lines-table .combobox-input {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.lines-table td.num input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.line-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.balance-strip {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-panel-2);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.balance-strip .bal-ok {
+  color: var(--ledger-green);
+  font-weight: 700;
+}
+
+.balance-strip .bal-bad {
+  color: var(--oxblood);
+  font-weight: 700;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--oxblood);
+  padding: 4px 9px;
+  font-size: 13px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.icon-btn:hover {
+  background: rgba(134, 36, 32, 0.08);
+  filter: none;
+}
+
+/* Document detail (voucher / ledger source view) */
+.doc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+
+.doc-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 24px;
+  margin-bottom: 16px;
+}
+
+.doc-meta .k {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+.doc-meta .v {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Grouped top-nav sections */
+.nav-group-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 6px;
+  align-self: center;
 }
 
 /* -------------------------------------------------------------------------
