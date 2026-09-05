@@ -54,6 +54,7 @@ html,
 body {
   padding: 0;
   margin: 0;
+  min-height: 100%;
   color: var(--ink);
   font-family: var(--font-sans);
   background-color: var(--paper);
@@ -167,6 +168,9 @@ h3,
   border-radius: 8px;
   border: 1px solid transparent;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .nav-link:hover {
@@ -180,6 +184,30 @@ h3,
   color: var(--brass-deep);
   border-color: var(--line-strong);
   font-weight: 600;
+}
+
+.nav-link.open {
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+.nav-link-close {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--ink-faint);
+  padding: 0 1px 0 4px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.nav-link-close:hover {
+  color: var(--oxblood);
+  background: rgba(134, 36, 32, 0.1);
+  filter: none;
 }
 
 .nav-user {
@@ -579,49 +607,26 @@ code {
   margin-bottom: 0;
 }
 
-.ws-tabs {
+.app-shell {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-.ws-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 11px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px 8px 0 0;
-  background: var(--paper-panel-2);
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--ink-soft);
-}
-
-.ws-tab.active {
-  color: var(--brass-deep);
-  border-color: var(--line-strong);
-  background: #fff8e8;
-  font-weight: 600;
-}
-
-.ws-tab .close {
-  color: var(--ink-soft);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0 2px;
-  font-size: 15px;
-  box-shadow: none;
+.app-shell-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
 
 .ws-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: calc(100vh - 190px);
-  border: 1px solid var(--line-strong);
-  border-radius: 0 10px 10px 10px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
   background: var(--paper);
 }
 
@@ -845,9 +850,6 @@ code {
   }
   .brand-sub {
     display: none;
-  }
-  .ws-frame {
-    height: calc(100vh - 200px);
   }
   .card {
     padding: 8px 6px;

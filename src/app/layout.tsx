@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
-import { Nav } from "./nav";
+import { AppShell } from "./app-shell";
 import { getSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -21,13 +22,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
+  const embed = (await headers()).get("x-ukarts-embed") === "1";
+
   return (
     <html lang="en">
       <body>
-        {session && (
-          <Nav username={session.username} role={session.role} />
+        {session && !embed ? (
+          <AppShell username={session.username} role={session.role}>
+            {children}
+          </AppShell>
+        ) : (
+          children
         )}
-        {children}
       </body>
     </html>
   );

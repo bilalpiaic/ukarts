@@ -15,11 +15,18 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifyToken(token) : null;
 
+  const embed =
+    req.nextUrl.searchParams.get("embed") === "1" ||
+    req.headers.get("sec-fetch-dest") === "iframe";
+  const requestHeaders = new Headers(req.headers);
+  if (embed) requestHeaders.set("x-ukarts-embed", "1");
+  const passHeaders = { request: { headers: requestHeaders } };
+
   if (isPublic) {
     if (pathname === "/login" && session) {
       return NextResponse.redirect(new URL("/", req.url));
     }
-    return NextResponse.next();
+    return NextResponse.next(passHeaders);
   }
 
   if (!session) {
@@ -31,7 +38,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  if (pathname === "/workspace") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  return NextResponse.next(passHeaders);
 }
 
 export const config = {

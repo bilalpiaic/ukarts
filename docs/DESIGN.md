@@ -961,11 +961,11 @@ A dedicated dashboard provides instant views: income/expense/net-profit KPIs, a
 balanced trial balance, party ledgers (AP/AR), inventory by stage, and a journal
 register — all date-filterable and printable.
 
-37.7 Multi-Tab Workspace
-A Workspace screen lets the user operate several modules at once. Each tab hosts a
-module (Overview, Purchasing, Production, Processing, Stitching, Sales, Reports);
-tabs can be opened and closed, and all remain mounted so in-progress work is
-preserved when switching between them.
+37.7 Multi-Tab Main Menu
+The top navigation is the workspace. Clicking a module opens it as a tab (kept
+mounted so in-progress forms are preserved). Open modules can be closed with the
+× on the nav item. There is no separate Workspace screen; /workspace redirects
+to Overview.
 
 37.8 Admin Editing & Deletion
 Administrators manage master data (parties, items, users, organization) with full
