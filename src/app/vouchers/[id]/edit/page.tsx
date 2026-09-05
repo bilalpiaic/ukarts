@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { listAttachments } from "@/lib/attachments";
 import { getAllParties, getJournalEntry, getPostableAccounts } from "@/lib/erp";
 import { VoucherForm } from "../../voucher-form";
 
@@ -10,10 +11,11 @@ export default async function EditVoucher({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, accounts, parties] = await Promise.all([
+  const [detail, accounts, parties, attachments] = await Promise.all([
     getJournalEntry(id),
     getPostableAccounts(),
     getAllParties(),
+    listAttachments("JOURNAL", id),
   ]);
   if (!detail.header) notFound();
   if (!detail.editable) redirect(`/vouchers/${id}`);
@@ -35,6 +37,7 @@ export default async function EditVoucher({
       credit: Number(l.credit) ? String(l.credit) : "",
       description: l.description ?? "",
     })),
+    attachments,
   };
 
   return (

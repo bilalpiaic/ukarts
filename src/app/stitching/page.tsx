@@ -1,23 +1,26 @@
 import { ActionForm } from "../action-form";
+import { AttachmentChips } from "../attachments";
 import {
   getItemsByType,
   getPartiesByRole,
   getProductionOrders,
+  getStitchingBills,
   getStitchingOrders,
 } from "@/lib/erp";
-import { qty } from "@/lib/format";
+import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function Stitching() {
-  const [stitchers, processedItems, finishedItems, prodOrders, stitchOrders] =
+  const [stitchers, processedItems, finishedItems, prodOrders, stitchOrders, bills] =
     await Promise.all([
       getPartiesByRole("STITCHER"),
       getItemsByType("PROCESSED_CLOTH"),
       getItemsByType("FINISHED_GOOD"),
       getProductionOrders(),
       getStitchingOrders(),
+      getStitchingBills(),
     ]);
 
   const poOptions = prodOrders.map((p) => ({ value: p.id, label: `${p.po_number} (${p.sale_order})` }));
@@ -81,6 +84,38 @@ export default async function Stitching() {
               { name: "date", label: "Date", type: "date" },
             ]}
           />
+        </div>
+
+        <div className="card full">
+          <h2>Stitching Bills</h2>
+          {bills.length === 0 ? (
+            <p className="subtitle">No stitching bills yet.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill</th>
+                  <th>Date</th>
+                  <th>Stitcher</th>
+                  <th className="num">Net payable</th>
+                  <th>Docs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bills.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.bill_number}</td>
+                    <td>{b.bill_date}</td>
+                    <td>{b.stitcher}</td>
+                    <td className="num">{money(b.net_payable)}</td>
+                    <td>
+                      <AttachmentChips entityType="STITCHING_BILL" entityId={b.id} count={b.attach_count} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="card full">

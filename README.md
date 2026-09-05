@@ -117,6 +117,7 @@ production; a development fallback is used when it is unset.
 - Searchable, type-to-filter dropdowns (LOVs) throughout
 - Reports dashboard with from/to date filtering and printable output
 - Print buttons on all forms and reports
+- Document attachments (CSV, Word, Excel, PDF, JPG, PNG, MP3) on bills, sale orders, production orders, and vouchers, with instant in-form preview
 - Main-menu multi-tab: open several modules at once from the top nav
 - Admin editing/deletion of master data and voiding of documents
 

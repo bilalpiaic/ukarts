@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllParties, getJournalEntriesList, getPostableAccounts } from "@/lib/erp";
 import { money } from "@/lib/format";
+import { AttachmentChips } from "../attachments";
 import { PrintButton } from "../print-button";
 import { VoucherForm } from "./voucher-form";
 
@@ -44,6 +45,7 @@ export default async function Vouchers() {
                   <th>Type</th>
                   <th>Status</th>
                   <th className="num">Amount</th>
+                  <th>Docs</th>
                 </tr>
               </thead>
               <tbody>
@@ -60,6 +62,9 @@ export default async function Vouchers() {
                       <span className={`pill ${v.status.toLowerCase()}`}>{v.status}</span>
                     </td>
                     <td className="num">{money(v.total)}</td>
+                    <td>
+                      <AttachmentChips entityType="JOURNAL" entityId={v.id} count={v.attach_count} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

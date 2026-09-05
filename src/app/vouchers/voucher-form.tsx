@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AttachmentField, uploadAttachments, usePendingFiles, type SavedFile } from "../attachments";
 import { Combobox, type Option } from "../combobox";
 
 export interface VoucherLine {
@@ -36,9 +37,12 @@ export function VoucherForm({
     voucherDate: string;
     description: string;
     lines: VoucherLine[];
+    attachments?: SavedFile[];
   };
 }) {
   const router = useRouter();
+  const pending = usePendingFiles();
+  const [saved, setSaved] = useState<SavedFile[]>(existing?.attachments ?? []);
   const [voucherDate, setVoucherDate] = useState(existing?.voucherDate ?? today());
   const [description, setDescription] = useState(existing?.description ?? "");
   const [lines, setLines] = useState<VoucherLine[]>(
@@ -84,6 +88,11 @@ export function VoucherForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
+      const journalId = String(existing?.id ?? data.journalEntryId ?? "");
+      if (journalId && pending.files.length > 0) {
+        await uploadAttachments("JOURNAL", journalId, pending.files.map((f) => f.file));
+        pending.clear();
+      }
       if (mode === "edit") {
         router.push(`/vouchers/${existing?.id}`);
         router.refresh();
@@ -189,6 +198,24 @@ export function VoucherForm({
           {totals.balanced ? "Balanced ✓" : `Out of balance by ${money(Math.abs(totals.debit - totals.credit))}`}
         </span>
       </div>
+
+      <AttachmentField
+        files={pending.files}
+        onAdd={pending.addFiles}
+        onRemove={pending.remove}
+        saved={saved}
+        onDeleteSaved={
+          existing?.id
+            ? async (id) => {
+                const res = await fetch(`/api/attachments/${id}`, { method: "DELETE" });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? "Could not remove file.");
+                setSaved((s) => s.filter((f) => f.id !== id));
+              }
+            : undefined
+        }
+        label="Voucher attachments"
+      />
 
       <div className="line-tools">
         <button type="button" className="btn-ghost" disabled={busy} onClick={() => submit(false)}>

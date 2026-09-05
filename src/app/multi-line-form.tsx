@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ACTION_ATTACH } from "@/lib/attachment-types";
+import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
 
 export interface HeaderField {
@@ -66,6 +68,8 @@ export function MultiLineForm({
   initialLines?: number;
 }) {
   const router = useRouter();
+  const attach = ACTION_ATTACH[action];
+  const pending = usePendingFiles();
   const [header, setHeader] = useState<Row>(() =>
     Object.fromEntries(headerFields.map((f) => [f.name, headerInitial(f)])),
   );
@@ -108,6 +112,13 @@ export function MultiLineForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
+      if (attach && pending.files.length > 0) {
+        const entityId =
+          attach.idFrom === "payload" ? payload[attach.idKey] : (data as Record<string, unknown>)[attach.idKey];
+        if (!entityId) throw new Error("Document saved, but no id was returned for attachments.");
+        await uploadAttachments(attach.entityType, String(entityId), pending.files.map((f) => f.file));
+        pending.clear();
+      }
       setMsg({ kind: "ok", text: successText ?? "Posted successfully." });
       setLines(Array.from({ length: Math.max(1, initialLines) }, () => emptyRow(lineColumns)));
       router.refresh();
@@ -199,6 +210,9 @@ export function MultiLineForm({
           {busy ? "Posting…" : submitLabel}
         </button>
       </div>
+      {attach && (
+        <AttachmentField files={pending.files} onAdd={pending.addFiles} onRemove={pending.remove} />
+      )}
       {msg && <div className={`msg ${msg.kind}`}>{msg.text}</div>}
     </form>
   );

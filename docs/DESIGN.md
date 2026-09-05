@@ -967,7 +967,15 @@ mounted so in-progress forms are preserved). Open modules can be closed with the
 × on the nav item. There is no separate Workspace screen; /workspace redirects
 to Overview.
 
-37.8 Admin Editing & Deletion
+37.8 Document Attachments
+Bills (grey purchase, processing, stitching, and sale dispatch), sale orders,
+production orders, and journal vouchers accept supporting files: CSV, Word
+(.doc / .docx), Excel (.xls / .xlsx), PDF, JPG, PNG, and MP3. Files are stored
+with the document. Clicking a file opens an instant preview popup on the same
+form (images, PDF, CSV tables, XLSX sheets, DOCX text, and audio). Registers
+show a Docs column to reopen saved files.
+
+37.9 Admin Editing & Deletion
 Administrators manage master data (parties, items, users, organization) with full
 create/edit/delete, and can void transactional documents (grey purchases, sale
 orders, journal vouchers). Voiding removes the document together with its journal
