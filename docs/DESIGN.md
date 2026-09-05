@@ -1040,3 +1040,19 @@ printed on the public sign-in page. The old /admin route redirects to /coa.
 Sample/demo master data (parties, items, designs, the demo `user` account) is
 not seeded so a production client starts with an empty operational ledger.
 Administrators enter their own parties, items, and designs on the COA screen.
+
+38.7 Control / Sub Ledgers
+Customers, vendors (grey suppliers), processors, and stitchers are sub-ledgers
+of named control accounts on the chart of accounts:
+
+- 1100 Accounts Receivable is composed of Customer sub-ledgers (debit-normal).
+- 2000 Supplier Payable is composed of Vendor sub-ledgers (credit-normal).
+- 2100 Processor Payable is composed of Processor sub-ledgers (credit-normal).
+- 2200 Stitcher Payable is composed of Stitcher sub-ledgers (credit-normal).
+
+The control GL balance equals the sum of party sub-ledgers on that account plus
+any unallocated lines posted without a party. Sub-ledger rows are shown indented
+under the control on the trial balance, Overview, Reports, COA, and the account
+ledger; they do not add a second time into trial-balance totals. Each party
+ledger states which control it belongs to. Mapping lives in
+accounting.control_ledgers and is seeded with the standard COA.

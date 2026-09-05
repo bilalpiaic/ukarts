@@ -250,7 +250,14 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                       {isEdit ? (
                         <input value={draft.account_name ?? ""} onChange={(e) => setDraft({ ...draft, account_name: e.target.value })} />
                       ) : (
-                        row.account_name
+                        <>
+                          {row.account_name}
+                          {row.control_caption ? (
+                            <span className="pill" style={{ marginLeft: 8 }}>
+                              Control · {row.control_caption}
+                            </span>
+                          ) : null}
+                        </>
                       )}
                     </td>
                     <td>

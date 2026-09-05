@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import {
+  getControlLedgers,
   getInventoryByStage,
   getJournalRegister,
   getOrganization,
-  getPartyLedgers,
   getProfitLoss,
   getTrialBalance,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
+import { ControlLedgerComposition, TrialBalanceWithSubs } from "../control-ledgers";
 import { DateFilter } from "./date-filter";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +22,12 @@ export default async function Reports({
   const { from, to } = await searchParams;
   const range = { from, to };
 
-  const [org, trial, pl, journal, ledgers, stock] = await Promise.all([
+  const [org, trial, pl, journal, controls, stock] = await Promise.all([
     getOrganization(),
     getTrialBalance(range),
     getProfitLoss(range),
     getJournalRegister(range),
-    getPartyLedgers(range),
+    getControlLedgers(range),
     getInventoryByStage(),
   ]);
 
@@ -78,74 +79,17 @@ export default async function Reports({
           {trial.rows.length === 0 ? (
             <p className="subtitle">No posted entries in this period.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Account</th>
-                  <th>Type</th>
-                  <th className="num">Debit</th>
-                  <th className="num">Credit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trial.rows.map((r) => (
-                  <tr key={r.account_code}>
-                    <td>
-                      <Link className="src-link" href={`/accounts/${encodeURIComponent(r.account_code)}${qs}`}>
-                        {r.account_code}
-                      </Link>
-                    </td>
-                    <td>{r.account_name}</td>
-                    <td>{r.account_type}</td>
-                    <td className="num">{money(r.debit)}</td>
-                    <td className="num">{money(r.credit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3}>Total</td>
-                  <td className="num">{money(trial.totalDebit)}</td>
-                  <td className="num">{money(trial.totalCredit)}</td>
-                </tr>
-              </tfoot>
-            </table>
+            <TrialBalanceWithSubs
+              rows={trial.rows}
+              totalDebit={trial.totalDebit}
+              totalCredit={trial.totalCredit}
+              qs={qs}
+              groups={controls}
+            />
           )}
         </div>
 
-        <div className="card">
-          <h2>Party Ledgers (AP / AR)</h2>
-          {ledgers.length === 0 ? (
-            <p className="subtitle">No balances in this period.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Party</th>
-                  <th className="num">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledgers.map((r) => {
-                  const bal = Number(r.balance);
-                  return (
-                    <tr key={r.party_code}>
-                      <td>
-                        <Link className="src-link" href={`/parties/${encodeURIComponent(r.party_code)}${qs}`}>
-                          {r.party_name}
-                        </Link>
-                      </td>
-                      <td className="num">
-                        {bal >= 0 ? `${money(bal)} payable` : `${money(-bal)} receivable`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <ControlLedgerComposition groups={controls} qs={qs} />
 
         <div className="card">
           <h2>Inventory by Stage</h2>

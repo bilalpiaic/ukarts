@@ -770,6 +770,43 @@ code {
   color: var(--ink-faint);
 }
 
+.control-block {
+  margin-top: 14px;
+}
+.control-block:first-of-type {
+  margin-top: 8px;
+}
+.control-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.control-block h3 {
+  margin: 0;
+  font-size: 15px;
+  font-family: var(--font-serif);
+}
+.compose-ok {
+  color: var(--ledger-green);
+  font-size: 13px;
+  font-weight: 600;
+}
+.compose-bad {
+  color: var(--oxblood);
+  font-size: 13px;
+  font-weight: 600;
+}
+tr.ledger-control td {
+  font-weight: 600;
+  background: var(--paper-sunk);
+}
+tr.ledger-sub td:first-child {
+  padding-left: 28px;
+}
+
 .page-head {
   display: flex;
   justify-content: space-between;

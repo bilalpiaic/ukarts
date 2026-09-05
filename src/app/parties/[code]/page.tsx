@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrganization, getPartyLedgerDetail } from "@/lib/erp";
+import { getControlLedgers, getOrganization, getPartyLedgerDetail } from "@/lib/erp";
 import { money } from "@/lib/format";
 import { PrintButton } from "../../print-button";
 
@@ -15,11 +15,14 @@ export default async function PartyLedger({
 }) {
   const { code } = await params;
   const { from, to } = await searchParams;
-  const [ledger, org] = await Promise.all([
+  const [ledger, org, controls] = await Promise.all([
     getPartyLedgerDetail(decodeURIComponent(code), { from, to }),
     getOrganization(),
+    getControlLedgers({ from, to }, { includeZeroParties: true }),
   ]);
   if (!ledger.party) notFound();
+  const partyCode = ledger.party.party_code;
+  const memberships = controls.filter((g) => g.subs.some((s) => s.party_code === partyCode));
 
   let running = 0;
 
@@ -38,6 +41,21 @@ export default async function PartyLedger({
           <PrintButton />
         </div>
       </div>
+
+      {memberships.length > 0 && (
+        <p className="subtitle">
+          Sub-ledger of{" "}
+          {memberships.map((g, i) => (
+            <span key={g.account_code}>
+              {i > 0 ? ", " : ""}
+              <Link className="src-link" href={`/accounts/${encodeURIComponent(g.account_code)}`}>
+                {g.account_code} {g.account_name}
+              </Link>
+              {` (${g.caption})`}
+            </span>
+          ))}
+        </p>
+      )}
 
       <div className="card full">
         <h2>Postings</h2>

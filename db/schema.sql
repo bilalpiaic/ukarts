@@ -409,6 +409,16 @@ CREATE TABLE IF NOT EXISTS accounting.accounts (
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
 );
 
+-- Control GL accounts whose balances are composed of party sub-ledgers
+-- (customers, vendors, processors, stitchers).
+CREATE TABLE IF NOT EXISTS accounting.control_ledgers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL UNIQUE REFERENCES accounting.accounts(id) ON DELETE CASCADE,
+    party_role VARCHAR(50) NOT NULL UNIQUE,
+    caption VARCHAR(100) NOT NULL,
+    normal_side VARCHAR(6) NOT NULL CHECK (normal_side IN ('DEBIT', 'CREDIT'))
+);
+
 CREATE TABLE IF NOT EXISTS accounting.journal_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     voucher_number VARCHAR(100) NOT NULL UNIQUE,
