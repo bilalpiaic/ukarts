@@ -928,8 +928,10 @@ Roles: ADMIN and USER (plus ACCOUNTANT, INVENTORY_MANAGER, PRODUCTION_MANAGER,
 SALES_USER, VIEWER). ADMIN users can access the Admin and Settings areas and
 perform edits/deletes; other roles are restricted to create/view. Role checks are
 enforced both in middleware/UI (hiding controls) and server-side in the admin API
-(returns 403). Default seeded accounts: admin/admin123 (ADMIN), user/user123
-(USER).
+(returns 403). A bootstrap administrator (`admin` / initial password `admin123`)
+is created on first setup only. There is no seeded demo operator account and the
+public login page does not display usernames or passwords. Administrators manage
+login accounts and reset passwords on the Settings screen.
 
 37.2 Organization Settings
 A single-row master.organization table holds the company profile (name, address,
@@ -1023,6 +1025,10 @@ These actions are available on the Voucher detail page and in the COA records pa
 The former Admin screen is now the Chart of Accounts workspace: create, edit,
 activate/deactivate and delete accounts (deletion blocked once an account has
 postings), alongside party and item master data and the document/voucher records
-panel. User administration (create/edit/reset-password/deactivate users) has moved
-to the Settings screen next to the organization profile. The old /admin route
-redirects to /coa.
+panel. User administration (create/edit/reset-password/deactivate users) lives
+on the Settings screen next to the organization profile. Login usernames are
+listed there with a dedicated Change password action; credentials are never
+printed on the public sign-in page. The old /admin route redirects to /coa.
+Sample/demo master data (parties, items, designs, the demo `user` account) is
+not seeded so a production client starts with an empty operational ledger.
+Administrators enter their own parties, items, and designs on the COA screen.

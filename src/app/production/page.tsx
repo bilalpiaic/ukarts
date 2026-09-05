@@ -47,8 +47,8 @@ export default async function Production() {
               { name: "buyerCode", label: "Customer", type: "select", options: customers.map((c) => ({ value: c.party_code, label: c.party_name })) },
               { name: "itemCode", label: "Finished item", type: "select", options: finished.map((f) => ({ value: f.item_code, label: f.item_name })) },
               { name: "designCode", label: "Design", type: "select", options: designOptions },
-              { name: "quantity", label: "Quantity (pcs)", type: "number", default: "1000", step: "1" },
-              { name: "rate", label: "Rate / pc", type: "number", default: "1200", step: "0.01" },
+              { name: "quantity", label: "Quantity (pcs)", type: "number", step: "1" },
+              { name: "rate", label: "Rate / pc", type: "number", step: "0.01" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />
@@ -63,7 +63,7 @@ export default async function Production() {
             fields={[
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "designCode", label: "Design", type: "select", options: designOptions },
-              { name: "plannedQuantity", label: "Planned quantity (pcs)", type: "number", default: "1000", step: "1" },
+              { name: "plannedQuantity", label: "Planned quantity (pcs)", type: "number", step: "1" },
               { name: "greyItemCode", label: "Grey item", type: "select", options: greyItems.map((g) => ({ value: g.item_code, label: g.item_name })) },
               { name: "date", label: "Date", type: "date" },
             ]}
@@ -80,7 +80,7 @@ export default async function Production() {
               { name: "greyLotId", label: "Grey lot", type: "select", options: lotOptions },
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "productionOrderId", label: "Production order", type: "select", options: poOptions },
-              { name: "quantity", label: "Quantity (meters)", type: "number", default: "5000", step: "0.0001" },
+              { name: "quantity", label: "Quantity (meters)", type: "number", step: "0.0001" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />

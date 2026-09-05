@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
-import { listGreyPurchases, listItems, listParties } from "@/lib/admin";
+import { listDesigns, listGreyPurchases, listItems, listParties } from "@/lib/admin";
 import { getJournalEntriesList, listAccounts } from "@/lib/erp";
 import { money } from "@/lib/format";
 import { ActionForm } from "../action-form";
@@ -13,10 +13,11 @@ export default async function COA() {
   const session = await getSession();
   if (!isAdmin(session)) redirect("/");
 
-  const [accounts, parties, items, purchases, vouchers] = await Promise.all([
+  const [accounts, parties, items, designs, purchases, vouchers] = await Promise.all([
     listAccounts(),
     listParties(),
     listItems(),
+    listDesigns(),
     listGreyPurchases(),
     getJournalEntriesList(),
   ]);
@@ -136,6 +137,26 @@ export default async function COA() {
         <div className="card">
           <h2>Items</h2>
           <AdminEntityTable kind="item" rows={items} />
+        </div>
+
+        {/* Designs */}
+        <div className="card">
+          <ActionForm
+            apiBase="/api/admin"
+            action="design-create"
+            title="Add Design"
+            submitLabel="Create Design"
+            successText="Design created."
+            fields={[
+              { name: "design_code", label: "Code", type: "text" },
+              { name: "design_name", label: "Name", type: "text" },
+              { name: "standard_consumption", label: "Standard consumption (m / pc)", type: "number", step: "0.0001" },
+            ]}
+          />
+        </div>
+        <div className="card">
+          <h2>Designs</h2>
+          <AdminEntityTable kind="design" rows={designs} />
         </div>
 
         {/* Records — grey purchases */}

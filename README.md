@@ -97,10 +97,15 @@ npm run dev                       # http://localhost:3000
 
 ### Signing in
 
-The app requires authentication. Seeded demo accounts:
+The app requires authentication. A bootstrap administrator is created on first
+setup:
 
-- `admin` / `admin123` — full access (edit/delete, Admin, Settings)
-- `user` / `user123` — create and view
+- Username: `admin`
+- Initial password: `admin123` (change this immediately in **Settings**)
+
+The public login page does not show usernames or passwords. Administrators
+manage login accounts and reset passwords in Settings. Additional staff users
+are created there; there is no seeded demo operator account.
 
 Set `AUTH_SECRET` (used to sign session cookies) to a long random value in
 production; a development fallback is used when it is unset.
@@ -144,7 +149,7 @@ provisions everything automatically:
 ├── .cursor/environment.json   # Cloud Agent dev environment
 ├── db/
 │   ├── schema.sql             # Full ERP schema (idempotent)
-│   └── seed.sql               # Chart of accounts, posting rules, master data
+│   └── seed.sql               # Chart of accounts, posting rules, system locations
 ├── docs/
 │   └── DESIGN.md              # Full Software Design Document (SDD)
 ├── scripts/

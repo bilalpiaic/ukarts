@@ -82,7 +82,7 @@ export function ActionButton({
   );
 }
 
-type Kind = "party" | "item" | "user" | "account";
+type Kind = "party" | "item" | "user" | "account" | "design";
 
 interface Row {
   id: string;
@@ -97,12 +97,27 @@ const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
 export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  const [passwordOnly, setPasswordOnly] = useState(false);
   const [draft, setDraft] = useState<Row>({} as Row);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function cancelEdit() {
+    setEditing(null);
+    setPasswordOnly(false);
+    setError(null);
+  }
+
   function startEdit(row: Row) {
     setEditing(row.id);
+    setPasswordOnly(false);
+    setDraft({ ...row, password: "" });
+    setError(null);
+  }
+
+  function startPassword(row: Row) {
+    setEditing(row.id);
+    setPasswordOnly(true);
     setDraft({ ...row, password: "" });
     setError(null);
   }
@@ -126,14 +141,21 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         payload.account_name = draft.account_name;
         payload.account_type = draft.account_type;
         payload.status = draft.status;
+      } else if (kind === "design") {
+        payload.design_name = draft.design_name;
+        payload.standard_consumption = draft.standard_consumption;
+        payload.status = draft.status;
       } else {
         payload.full_name = draft.full_name;
         payload.role = draft.role;
         payload.status = draft.status;
+        if (passwordOnly && !draft.password) {
+          throw new Error("Enter a new password.");
+        }
         if (draft.password) payload.password = draft.password;
       }
       await post(`/api/admin/${kind}-update`, payload);
-      setEditing(null);
+      cancelEdit();
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -149,7 +171,9 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         ? ["Code", "Name", "Type", "Status", ""]
         : kind === "account"
           ? ["Code", "Name", "Type", "Status", ""]
-          : ["Username", "Name", "Role", "Status", ""];
+          : kind === "design"
+            ? ["Code", "Name", "Consumption", "Status", ""]
+            : ["Username", "Name", "Role", "Status", "Password", ""];
 
   return (
     <>
@@ -249,23 +273,26 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                     </td>
                   </>
                 )}
-                {kind === "user" && (
+                {kind === "design" && (
                   <>
-                    <td>{row.username}</td>
+                    <td>{row.design_code}</td>
                     <td>
                       {isEdit ? (
-                        <input value={draft.full_name ?? ""} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} />
+                        <input value={draft.design_name ?? ""} onChange={(e) => setDraft({ ...draft, design_name: e.target.value })} />
                       ) : (
-                        row.full_name
+                        row.design_name
                       )}
                     </td>
                     <td>
                       {isEdit ? (
-                        <select value={draft.role ?? ""} onChange={(e) => setDraft({ ...draft, role: e.target.value })}>
-                          {ROLES.map((s) => <option key={s}>{s}</option>)}
-                        </select>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={draft.standard_consumption ?? ""}
+                          onChange={(e) => setDraft({ ...draft, standard_consumption: e.target.value })}
+                        />
                       ) : (
-                        row.role
+                        row.standard_consumption
                       )}
                     </td>
                     <td>
@@ -279,21 +306,57 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                     </td>
                   </>
                 )}
+                {kind === "user" && (
+                  <>
+                    <td><code>{row.username}</code></td>
+                    <td>
+                      {isEdit && !passwordOnly ? (
+                        <input value={draft.full_name ?? ""} onChange={(e) => setDraft({ ...draft, full_name: e.target.value })} />
+                      ) : (
+                        row.full_name
+                      )}
+                    </td>
+                    <td>
+                      {isEdit && !passwordOnly ? (
+                        <select value={draft.role ?? ""} onChange={(e) => setDraft({ ...draft, role: e.target.value })}>
+                          {ROLES.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        row.role
+                      )}
+                    </td>
+                    <td>
+                      {isEdit && !passwordOnly ? (
+                        <select value={draft.status ?? ""} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>
+                          {STATUS_OPTS.map((s) => <option key={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        row.status
+                      )}
+                    </td>
+                    <td>
+                      {isEdit ? (
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={passwordOnly ? "New password" : "New password (optional)"}
+                          value={draft.password ?? ""}
+                          onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+                        />
+                      ) : (
+                        <span className="password-mask">••••••••</span>
+                      )}
+                    </td>
+                  </>
+                )}
                 <td>
                   <div className="row-actions">
                     {isEdit ? (
                       <>
-                        {kind === "user" && (
-                          <input
-                            placeholder="new password (optional)"
-                            value={draft.password ?? ""}
-                            onChange={(e) => setDraft({ ...draft, password: e.target.value })}
-                          />
-                        )}
                         <button disabled={busy} onClick={save}>
-                          {busy ? "…" : "Save"}
+                          {busy ? "…" : passwordOnly ? "Save password" : "Save"}
                         </button>
-                        <button className="btn-ghost" onClick={() => setEditing(null)}>
+                        <button className="btn-ghost" onClick={cancelEdit}>
                           Cancel
                         </button>
                       </>
@@ -302,6 +365,11 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                         <button className="btn-ghost" onClick={() => startEdit(row)}>
                           Edit
                         </button>
+                        {kind === "user" && (
+                          <button className="btn-ghost" onClick={() => startPassword(row)}>
+                            Change password
+                          </button>
+                        )}
                         <DeleteButton endpoint={`/api/admin/${kind}-delete`} payload={{ id: row.id }} />
                       </>
                     )}

@@ -49,7 +49,7 @@ export default async function Processing() {
               { name: "saleOrderId", label: "Sale order", type: "select", options: soOptions },
               { name: "processorCode", label: "Processor", type: "select", options: processors.map((p) => ({ value: p.party_code, label: p.party_name })) },
               { name: "greyLotId", label: "Grey lot", type: "select", options: lotOptions },
-              { name: "quantity", label: "Quantity (meters)", type: "number", default: "5000", step: "0.0001" },
+              { name: "quantity", label: "Quantity (meters)", type: "number", step: "0.0001" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />
@@ -64,9 +64,9 @@ export default async function Processing() {
             fields={[
               { name: "processingOrderLotId", label: "Issued lot", type: "select", options: openLotOptions },
               { name: "processedItemCode", label: "Processed item", type: "select", options: processedItems.map((i) => ({ value: i.item_code, label: i.item_name })) },
-              { name: "processedQuantity", label: "Processed qty (m)", type: "number", default: "4900", step: "0.0001" },
-              { name: "returnedQuantity", label: "Returned grey (m)", type: "number", default: "50", step: "0.0001" },
-              { name: "shortageQuantity", label: "Shortage (m)", type: "number", default: "50", step: "0.0001" },
+              { name: "processedQuantity", label: "Processed qty (m)", type: "number", step: "0.0001" },
+              { name: "returnedQuantity", label: "Returned grey (m)", type: "number", default: "0", step: "0.0001" },
+              { name: "shortageQuantity", label: "Shortage (m)", type: "number", default: "0", step: "0.0001" },
               {
                 name: "classification",
                 label: "Shortage classification",
@@ -90,8 +90,8 @@ export default async function Processing() {
             successText="Processing bill posted."
             fields={[
               { name: "processingOrderId", label: "Processing order", type: "select", options: procOrderOptions },
-              { name: "quantity", label: "Processed quantity (m)", type: "number", default: "4900", step: "0.0001" },
-              { name: "rate", label: "Processing rate", type: "number", default: "20", step: "0.01" },
+              { name: "quantity", label: "Processed quantity (m)", type: "number", step: "0.0001" },
+              { name: "rate", label: "Processing rate", type: "number", step: "0.01" },
               { name: "otherDeductions", label: "Other deductions", type: "number", default: "0", step: "0.01" },
               { name: "date", label: "Date", type: "date" },
             ]}

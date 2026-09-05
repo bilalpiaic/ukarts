@@ -194,6 +194,9 @@ export async function updateUser(input: {
   status?: string;
   password?: string;
 }) {
+  if (input.password && input.password.length > 0 && input.password.length < 4) {
+    throw new Error("Password must be at least 4 characters.");
+  }
   if (input.password && input.password.length > 0) {
     await query(
       `UPDATE master.users SET full_name=$1, role=$2, status=COALESCE($3,status),
@@ -206,6 +209,66 @@ export async function updateUser(input: {
          updated_at=NOW() WHERE id=$4`,
       [input.full_name, input.role, input.status, input.id],
     );
+  }
+  return { ok: true };
+}
+
+export async function listDesigns() {
+  return query<{
+    id: string;
+    design_code: string;
+    design_name: string;
+    standard_consumption: string;
+    status: string;
+  }>(
+    `SELECT id, design_code, design_name, COALESCE(standard_consumption,0)::text AS standard_consumption, status
+     FROM master.designs ORDER BY design_name`,
+  );
+}
+
+export async function createDesign(input: {
+  design_code: string;
+  design_name: string;
+  standard_consumption?: number | string;
+}) {
+  if (!input.design_code?.trim()) throw new Error("Design code is required.");
+  if (!input.design_name?.trim()) throw new Error("Design name is required.");
+  const consumption = Number(input.standard_consumption ?? 0);
+  if (!(consumption >= 0)) throw new Error("Standard consumption must be zero or greater.");
+  const res = await query<{ id: string }>(
+    `INSERT INTO master.designs (design_code, design_name, standard_consumption)
+     VALUES ($1,$2,$3) RETURNING id`,
+    [input.design_code.trim(), input.design_name.trim(), consumption],
+  );
+  return { id: res[0].id };
+}
+
+export async function updateDesign(input: {
+  id: string;
+  design_name: string;
+  standard_consumption?: number | string;
+  status?: string;
+}) {
+  const consumption = Number(input.standard_consumption ?? 0);
+  if (!(consumption >= 0)) throw new Error("Standard consumption must be zero or greater.");
+  await query(
+    `UPDATE master.designs
+     SET design_name=$1, standard_consumption=$2, status=COALESCE($3,status)
+     WHERE id=$4`,
+    [input.design_name, consumption, input.status, input.id],
+  );
+  return { ok: true };
+}
+
+export async function deleteDesign(input: { id: string }) {
+  try {
+    await query("DELETE FROM master.designs WHERE id=$1", [input.id]);
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (/foreign key|violates/i.test(msg)) {
+      throw new Error("Cannot delete: this design is used on orders. Deactivate it instead.");
+    }
+    throw err;
   }
   return { ok: true };
 }

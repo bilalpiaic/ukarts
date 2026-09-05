@@ -33,7 +33,7 @@ export default async function Purchasing() {
             submitLabel="Record Owner Investment"
             successText="Posted balanced journal entry."
             fields={[
-              { name: "amount", label: "Amount (Dr Cash / Cr Owner Investment)", type: "number", default: "1000000", step: "0.01" },
+              { name: "amount", label: "Amount (Dr Cash / Cr Owner Investment)", type: "number", step: "0.01" },
               { name: "date", label: "Date", type: "date" },
             ]}
           />

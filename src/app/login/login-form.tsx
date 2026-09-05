@@ -5,7 +5,7 @@ import { useState } from "react";
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +35,23 @@ export function LoginForm({ next }: { next: string }) {
     <form onSubmit={submit}>
       <div className="form-row">
         <label>Username</label>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
+          required
+          autoFocus
+        />
       </div>
       <div className="form-row">
         <label>Password</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
       </div>
       <button type="submit" disabled={busy} style={{ width: "100%" }}>
         {busy ? "Signing in…" : "Sign in"}
