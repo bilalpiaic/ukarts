@@ -1,14 +1,14 @@
-import Link from "next/link";
 import {
+  getControlLedgers,
   getInventoryByStage,
   getKpis,
-  getPartyLedgers,
   getProductionOrders,
   getProfitability,
   getTrialBalance,
   healthCheck,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
+import { ControlLedgerComposition, TrialBalanceWithSubs } from "./control-ledgers";
 import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
@@ -30,11 +30,11 @@ export default async function Overview() {
     );
   }
 
-  const [kpis, trial, stock, ledgers, profit, pos] = await Promise.all([
+  const [kpis, trial, stock, controls, profit, pos] = await Promise.all([
     getKpis(),
     getTrialBalance(),
     getInventoryByStage(),
-    getPartyLedgers(),
+    getControlLedgers(),
     getProfitability(),
     getProductionOrders(),
   ]);
@@ -82,39 +82,12 @@ export default async function Overview() {
           {trial.rows.length === 0 ? (
             <p className="subtitle">No posted entries yet.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Account</th>
-                  <th>Type</th>
-                  <th className="num">Debit</th>
-                  <th className="num">Credit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trial.rows.map((r) => (
-                  <tr key={r.account_code}>
-                    <td>
-                      <Link className="src-link" href={`/accounts/${encodeURIComponent(r.account_code)}`}>
-                        {r.account_code}
-                      </Link>
-                    </td>
-                    <td>{r.account_name}</td>
-                    <td>{r.account_type}</td>
-                    <td className="num">{money(r.debit)}</td>
-                    <td className="num">{money(r.credit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3}>Total</td>
-                  <td className="num">{money(trial.totalDebit)}</td>
-                  <td className="num">{money(trial.totalCredit)}</td>
-                </tr>
-              </tfoot>
-            </table>
+            <TrialBalanceWithSubs
+              rows={trial.rows}
+              totalDebit={trial.totalDebit}
+              totalCredit={trial.totalCredit}
+              groups={controls}
+            />
           )}
         </div>
 
@@ -146,42 +119,7 @@ export default async function Overview() {
           )}
         </div>
 
-        <div className="card">
-          <h2>Party Ledgers (AP / AR)</h2>
-          {ledgers.length === 0 ? (
-            <p className="subtitle">No party balances yet.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Party</th>
-                  <th>Roles</th>
-                  <th className="num">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledgers.map((r) => {
-                  const bal = Number(r.balance);
-                  return (
-                    <tr key={r.party_code}>
-                      <td>
-                        <Link className="src-link" href={`/parties/${encodeURIComponent(r.party_code)}`}>
-                          {r.party_name}
-                        </Link>
-                      </td>
-                      <td>{r.roles}</td>
-                      <td className="num">
-                        {bal >= 0
-                          ? `${money(bal)} payable`
-                          : `${money(-bal)} receivable`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <ControlLedgerComposition groups={controls} />
 
         <div className="card full">
           <h2>Production Orders &amp; Profitability</h2>

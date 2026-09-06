@@ -55,8 +55,9 @@ a single transaction with a balanced journal and inventory-ledger movements:
 - **Stitching & finished goods** — issue processed cloth to stitcher; stitching
   production receipt (finished goods into inventory); stitching bill.
 - **Sales** — dispatch finished goods with cash or credit revenue postings.
-- **Reports** — trial balance, party ledgers (AP/AR), inventory by stage,
-  production costing, profitability, and KPI dashboard.
+- **Reports** — trial balance with control/sub-ledger composition (customers
+  under AR, vendors under Supplier Payable, processors under Processor Payable),
+  inventory by stage, production costing, profitability, and KPI dashboard.
 
 Each business action is exposed at `POST /api/action/[name]` and driven from the
 module pages (Overview, Purchasing, Production, Processing, Stitching, Sales).
@@ -116,6 +117,7 @@ production; a development fallback is used when it is unset.
 - Organization settings (used in print headers)
 - Searchable, type-to-filter dropdowns (LOVs) throughout
 - Reports dashboard with from/to date filtering and printable output
+- Control / sub ledgers: customers compose AR, vendors compose Supplier Payable, processors compose Processor Payable
 - Print buttons on all forms and reports
 - Document attachments (CSV, Word, Excel, PDF, JPG, PNG, MP3) on bills, sale orders, production orders, and vouchers, with instant in-form preview
 - Main-menu multi-tab: open several modules at once from the top nav

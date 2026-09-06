@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAccountLedger, getOrganization } from "@/lib/erp";
+import { getAccountLedger, getControlLedgers, getOrganization } from "@/lib/erp";
 import { money } from "@/lib/format";
+import { ControlLedgerBlock } from "../../control-ledgers";
 import { PrintButton } from "../../print-button";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +16,17 @@ export default async function AccountLedger({
 }) {
   const { code } = await params;
   const { from, to } = await searchParams;
-  const [ledger, org] = await Promise.all([
+  const [ledger, org, controls] = await Promise.all([
     getAccountLedger(decodeURIComponent(code), { from, to }),
     getOrganization(),
+    getControlLedgers({ from, to }),
   ]);
   if (!ledger.account) notFound();
+  const control = controls.find((g) => g.account_code === ledger.account?.account_code);
+  const qsParams = new URLSearchParams();
+  if (from) qsParams.set("from", from);
+  if (to) qsParams.set("to", to);
+  const qs = qsParams.toString() ? `?${qsParams.toString()}` : "";
 
   let running = 0;
 
@@ -35,12 +42,20 @@ export default async function AccountLedger({
         <h1 className="page-title">
           {ledger.account.account_code} · {ledger.account.account_name}
           <span className="pill" style={{ marginLeft: 8 }}>{ledger.account.account_type}</span>
+          {control ? <span className="pill" style={{ marginLeft: 8 }}>Control · {control.caption}</span> : null}
         </h1>
         <div className="row-actions no-print">
           <Link className="btn-ghost" href="/reports">← Reports</Link>
           <PrintButton />
         </div>
       </div>
+
+      {control && (
+        <div className="card full">
+          <h2>Sub-ledger composition</h2>
+          <ControlLedgerBlock group={control} qs={qs} />
+        </div>
+      )}
 
       <div className="card full">
         <h2>Postings</h2>

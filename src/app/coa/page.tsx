@@ -2,10 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
 import { listDesigns, listGreyPurchases, listItems, listParties } from "@/lib/admin";
-import { getJournalEntriesList, listAccounts } from "@/lib/erp";
+import { getControlLedgers, getJournalEntriesList, listAccounts } from "@/lib/erp";
 import { money } from "@/lib/format";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable, ActionButton, DeleteButton } from "../admin-controls";
+import { ControlLedgerComposition } from "../control-ledgers";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,14 @@ export default async function COA() {
   const session = await getSession();
   if (!isAdmin(session)) redirect("/");
 
-  const [accounts, parties, items, designs, purchases, vouchers] = await Promise.all([
+  const [accounts, parties, items, designs, purchases, vouchers, controls] = await Promise.all([
     listAccounts(),
     listParties(),
     listItems(),
     listDesigns(),
     listGreyPurchases(),
     getJournalEntriesList(),
+    getControlLedgers(undefined, { includeZeroParties: true }),
   ]);
 
   return (
@@ -63,9 +65,16 @@ export default async function COA() {
               account_name: a.account_name,
               account_type: a.account_type,
               status: a.status,
+              control_caption: controls.find((c) => c.account_code === a.account_code)?.caption,
             }))}
           />
         </div>
+
+        <ControlLedgerComposition
+          groups={controls}
+          title="Control / Sub Ledgers"
+          emptyHint="Create customers, vendors, and processors in Parties. They become sub-ledgers of AR, Supplier Payable, and Processor Payable."
+        />
 
         {/* Parties */}
         <div className="card">
@@ -84,7 +93,7 @@ export default async function COA() {
                 type: "select",
                 options: [
                   { value: "CUSTOMER", label: "Customer" },
-                  { value: "GREY_SUPPLIER", label: "Grey Supplier" },
+                  { value: "GREY_SUPPLIER", label: "Vendor (Grey Supplier)" },
                   { value: "PROCESSOR", label: "Processor" },
                   { value: "STITCHER", label: "Stitcher" },
                   { value: "TRANSPORTER", label: "Transporter" },

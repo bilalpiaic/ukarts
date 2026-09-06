@@ -1410,6 +1410,167 @@ export async function getPartyLedgers(range?: DateRange) {
   );
 }
 
+export interface ControlSubRow {
+  party_code: string;
+  party_name: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface ControlLedgerGroup {
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  caption: string;
+  party_role: string;
+  normal_side: "DEBIT" | "CREDIT";
+  debit: number;
+  credit: number;
+  control_balance: number;
+  unallocated: number;
+  unallocated_debit: number;
+  unallocated_credit: number;
+  sub_total: number;
+  composed: boolean;
+  subs: ControlSubRow[];
+}
+
+function naturalBalance(side: "DEBIT" | "CREDIT", debit: number, credit: number): number {
+  return side === "DEBIT" ? debit - credit : credit - debit;
+}
+
+/** Control GL accounts composed of customer / vendor / processor / stitcher sub-ledgers. */
+export async function getControlLedgers(
+  range?: DateRange,
+  opts?: { includeZeroParties?: boolean },
+): Promise<ControlLedgerGroup[]> {
+  const controls = await query<{
+    account_id: string;
+    account_code: string;
+    account_name: string;
+    account_type: string;
+    caption: string;
+    party_role: string;
+    normal_side: "DEBIT" | "CREDIT";
+  }>(
+    `SELECT a.id AS account_id, a.account_code, a.account_name, a.account_type,
+            cl.caption, cl.party_role, cl.normal_side
+     FROM accounting.control_ledgers cl
+     JOIN accounting.accounts a ON a.id = cl.account_id
+     ORDER BY a.account_code`,
+  );
+
+  const dc = dateClause(range, 1);
+  const totals = await query<{
+    account_id: string;
+    party_id: string | null;
+    debit: string;
+    credit: string;
+  }>(
+    `SELECT a.id AS account_id, jl.party_id,
+            COALESCE(SUM(jl.debit), 0)::text AS debit,
+            COALESCE(SUM(jl.credit), 0)::text AS credit
+     FROM accounting.journal_lines jl
+     JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status = 'POSTED'
+     JOIN accounting.accounts a ON a.id = jl.account_id
+     JOIN accounting.control_ledgers cl ON cl.account_id = a.id
+     WHERE TRUE${dc.sql}
+     GROUP BY a.id, jl.party_id`,
+    dc.params,
+  );
+
+  const parties = await query<{
+    id: string;
+    party_code: string;
+    party_name: string;
+    role: string;
+  }>(
+    `SELECT p.id, p.party_code, p.party_name, r.role
+     FROM master.parties p
+     JOIN master.party_roles r ON r.party_id = p.id
+     WHERE p.status = 'ACTIVE'
+     ORDER BY p.party_name`,
+  );
+
+  const partyById = new Map(parties.map((p) => [p.id, p]));
+
+  return controls.map((c) => {
+    const rows = totals.filter((t) => t.account_id === c.account_id);
+    const debit = rows.reduce((s, r) => s + Number(r.debit), 0);
+    const credit = rows.reduce((s, r) => s + Number(r.credit), 0);
+    const control_balance = naturalBalance(c.normal_side, debit, credit);
+
+    const unallocRow = rows.find((r) => r.party_id == null);
+    const unallocated_debit = unallocRow ? Number(unallocRow.debit) : 0;
+    const unallocated_credit = unallocRow ? Number(unallocRow.credit) : 0;
+    const unallocated = unallocRow
+      ? naturalBalance(c.normal_side, unallocated_debit, unallocated_credit)
+      : 0;
+
+    const byParty = new Map<string, { debit: number; credit: number }>();
+    for (const r of rows) {
+      if (!r.party_id) continue;
+      const cur = byParty.get(r.party_id) ?? { debit: 0, credit: 0 };
+      cur.debit += Number(r.debit);
+      cur.credit += Number(r.credit);
+      byParty.set(r.party_id, cur);
+    }
+
+    const seen = new Set<string>();
+    const subs: ControlSubRow[] = [];
+
+    for (const [pid, amt] of byParty) {
+      const p = partyById.get(pid);
+      const balance = naturalBalance(c.normal_side, amt.debit, amt.credit);
+      if (Math.abs(amt.debit) < 0.005 && Math.abs(amt.credit) < 0.005) continue;
+      subs.push({
+        party_code: p?.party_code ?? pid,
+        party_name: p?.party_name ?? "Unknown party",
+        debit: amt.debit,
+        credit: amt.credit,
+        balance,
+      });
+      seen.add(pid);
+    }
+
+    if (opts?.includeZeroParties) {
+      for (const p of parties) {
+        if (p.role !== c.party_role || seen.has(p.id)) continue;
+        subs.push({
+          party_code: p.party_code,
+          party_name: p.party_name,
+          debit: 0,
+          credit: 0,
+          balance: 0,
+        });
+      }
+    }
+
+    subs.sort((a, b) => a.party_name.localeCompare(b.party_name));
+    const sub_total = subs.reduce((s, r) => s + r.balance, 0);
+    const composed = Math.abs(sub_total + unallocated - control_balance) < 0.005;
+
+    return {
+      account_code: c.account_code,
+      account_name: c.account_name,
+      account_type: c.account_type,
+      caption: c.caption,
+      party_role: c.party_role,
+      normal_side: c.normal_side,
+      debit,
+      credit,
+      control_balance,
+      unallocated,
+      unallocated_debit,
+      unallocated_credit,
+      sub_total,
+      composed,
+      subs,
+    };
+  });
+}
+
 export async function getJournalRegister(range?: DateRange) {
   const dc = dateClause(range, 1);
   return query<{

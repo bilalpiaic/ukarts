@@ -50,6 +50,24 @@ INSERT INTO accounting.posting_rules (transaction_type, debit_account_code, cred
     ('STITCHING_BILL',            '5100', '2200', 'Dr Production/Finished Goods Cost, Cr Stitcher Payable')
 ON CONFLICT (transaction_type, debit_account_code, credit_account_code) DO NOTHING;
 
+-- Control accounts: GL total = sum of party sub-ledgers for that role.
+INSERT INTO accounting.control_ledgers (account_id, party_role, caption, normal_side)
+SELECT id, 'CUSTOMER', 'Customers', 'DEBIT'
+FROM accounting.accounts WHERE account_code = '1100'
+ON CONFLICT (party_role) DO NOTHING;
+INSERT INTO accounting.control_ledgers (account_id, party_role, caption, normal_side)
+SELECT id, 'GREY_SUPPLIER', 'Vendors', 'CREDIT'
+FROM accounting.accounts WHERE account_code = '2000'
+ON CONFLICT (party_role) DO NOTHING;
+INSERT INTO accounting.control_ledgers (account_id, party_role, caption, normal_side)
+SELECT id, 'PROCESSOR', 'Processors', 'CREDIT'
+FROM accounting.accounts WHERE account_code = '2100'
+ON CONFLICT (party_role) DO NOTHING;
+INSERT INTO accounting.control_ledgers (account_id, party_role, caption, normal_side)
+SELECT id, 'STITCHER', 'Stitchers', 'CREDIT'
+FROM accounting.accounts WHERE account_code = '2200'
+ON CONFLICT (party_role) DO NOTHING;
+
 -- Units
 INSERT INTO master.units (unit_code, unit_name, decimal_precision) VALUES
     ('MTR', 'Meter', 4),
