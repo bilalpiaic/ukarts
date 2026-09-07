@@ -4,7 +4,6 @@ import { listUsers } from "@/lib/admin";
 import { getOrganization } from "@/lib/erp";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable } from "../admin-controls";
-import { PrintHeader } from "../print-header";
 
 export const dynamic = "force-dynamic";
 
@@ -44,15 +43,11 @@ export default async function Settings() {
         </div>
         <div className="card">
           <h2>About</h2>
-          <p className="subtitle">
-            Administrators edit the About text in Company Profile. It prints on
-            reports and forms with the company name, address, and brand mark.
-          </p>
           <div className="brand-preview">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="U.K Arts" className="brand-preview-logo" width={160} height={160} />
+            {org?.about ? <p className="print-about">{org.about}</p> : null}
           </div>
-          <PrintHeader org={org} title="Print preview" preview />
         </div>
 
         <div className="card">

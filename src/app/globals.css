@@ -1224,6 +1224,13 @@ tr.ledger-sub td:first-child {
   box-shadow: 0 8px 22px rgba(26, 18, 10, 0.22);
 }
 
+.brand-preview .print-about {
+  margin: 14px 0 0;
+  text-align: left;
+  font-style: normal;
+  color: var(--ink);
+}
+
 @media print {
   .no-print,
   .nav,
