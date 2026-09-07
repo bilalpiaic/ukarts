@@ -8,6 +8,10 @@ const PUBLIC_API = ["/api/auth/login", "/api/health"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (/\.(?:svg|png|jpe?g|gif|webp|ico|txt|woff2?)$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
   const isPublic =
     PUBLIC_PAGES.includes(pathname) ||
     PUBLIC_API.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -46,5 +50,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logo.png|brand/).*)"],
 };
