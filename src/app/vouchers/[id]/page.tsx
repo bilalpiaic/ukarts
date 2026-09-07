@@ -6,6 +6,7 @@ import { getJournalEntry, getOrganization } from "@/lib/erp";
 import { money } from "@/lib/format";
 import { AttachmentChips, SavedAttachmentList } from "../../attachments";
 import { PrintButton } from "../../print-button";
+import { PrintHeader } from "../../print-header";
 import { VoucherActions } from "../voucher-actions";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +29,7 @@ export default async function VoucherDetail({
 
   return (
     <div className="container">
-      <div className="print-header">
-        <h2 style={{ margin: 0 }}>{org?.name ?? "U.K Arts"}</h2>
-        <div>{org?.address}</div>
-        <div>Journal Voucher — {h.voucher_number}</div>
-        <hr />
-      </div>
+      <PrintHeader org={org} title={`Journal Voucher — ${h.voucher_number}`} />
 
       <div className="page-head">
         <h1 className="page-title">

@@ -3,6 +3,7 @@ import { getAllParties, getJournalEntriesList, getPostableAccounts } from "@/lib
 import { money } from "@/lib/format";
 import { AttachmentChips } from "../attachments";
 import { PrintButton } from "../print-button";
+import { PrintOrgHeader } from "../print-header";
 import { VoucherForm } from "./voucher-form";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function Vouchers() {
 
   return (
     <div className="container">
+      <PrintOrgHeader title="Journal Vouchers" />
       <div className="page-head">
         <h1 className="page-title">Journal Vouchers</h1>
         <PrintButton />

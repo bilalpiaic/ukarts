@@ -1874,18 +1874,21 @@ export async function getStitchingBills() {
   );
 }
 
-export async function getOrganization() {
-  const rows = await query<{
-    id: string;
-    name: string;
-    address: string | null;
-    phone: string | null;
-    email: string | null;
-    tax_id: string | null;
-    currency: string;
-    fiscal_year_start: string | null;
-  }>(
-    `SELECT id, name, address, phone, email, tax_id, currency, fiscal_year_start
+export type Organization = {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  tax_id: string | null;
+  currency: string;
+  fiscal_year_start: string | null;
+  about: string | null;
+};
+
+export async function getOrganization(): Promise<Organization | null> {
+  const rows = await query<Organization>(
+    `SELECT id, name, address, phone, email, tax_id, currency, fiscal_year_start, about
      FROM master.organization ORDER BY updated_at LIMIT 1`,
   );
   return rows[0] ?? null;

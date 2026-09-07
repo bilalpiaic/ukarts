@@ -4,6 +4,7 @@ import { listUsers } from "@/lib/admin";
 import { getOrganization } from "@/lib/erp";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable } from "../admin-controls";
+import { PrintHeader } from "../print-header";
 
 export const dynamic = "force-dynamic";
 
@@ -30,15 +31,31 @@ export default async function Settings() {
               { name: "email", label: "Email", type: "text", default: org?.email ?? "", required: false },
               { name: "tax_id", label: "Tax ID / NTN", type: "text", default: org?.tax_id ?? "", required: false },
               { name: "currency", label: "Currency", type: "text", default: org?.currency ?? "PKR" },
+              {
+                name: "about",
+                label: "About",
+                type: "textarea",
+                rows: 6,
+                default: org?.about ?? "",
+                required: false,
+              },
             ]}
           />
         </div>
         <div className="card">
           <h2>About</h2>
           <p className="subtitle">
-            These details appear on printed reports and forms. Only administrators
-            can change organization settings and manage users.
+            Administrators edit the About text in Company Profile. It prints on
+            reports and forms with the company name, address, and brand mark.
           </p>
+          <div className="brand-preview">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="U.K Arts" className="brand-preview-logo" width={160} height={160} />
+            <p className="subtitle" style={{ marginTop: 10 }}>
+              U.K Arts — cloth, craft, and passion for textile.
+            </p>
+          </div>
+          <PrintHeader org={org} title="Print preview" preview />
         </div>
 
         <div className="card">

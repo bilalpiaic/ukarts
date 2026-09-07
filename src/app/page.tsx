@@ -10,6 +10,7 @@ import {
 import { money, qty } from "@/lib/format";
 import { ControlLedgerComposition, TrialBalanceWithSubs } from "./control-ledgers";
 import { PrintButton } from "./print-button";
+import { PrintOrgHeader } from "./print-header";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export default async function Overview() {
 
   return (
     <div className="container">
+      <PrintOrgHeader title="Overview" />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 className="page-title">Overview</h1>
         <PrintButton label="Print Dashboard" />

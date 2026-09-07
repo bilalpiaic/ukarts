@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getControlLedgers, getOrganization, getPartyLedgerDetail } from "@/lib/erp";
 import { money } from "@/lib/format";
 import { PrintButton } from "../../print-button";
+import { PrintHeader } from "../../print-header";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,7 @@ export default async function PartyLedger({
 
   return (
     <div className="container">
-      <div className="print-header">
-        <h2 style={{ margin: 0 }}>{org?.name ?? "U.K Arts"}</h2>
-        <div>Party Ledger — {ledger.party.party_name}</div>
-        <hr />
-      </div>
+      <PrintHeader org={org} title={`Party Ledger — ${ledger.party.party_name}`} />
 
       <div className="page-head">
         <h1 className="page-title">{ledger.party.party_name}</h1>

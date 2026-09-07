@@ -10,23 +10,24 @@ export async function updateOrganization(input: {
   email?: string;
   tax_id?: string;
   currency?: string;
+  about?: string;
 }) {
   const rows = await query<{ id: string }>(
     "SELECT id FROM master.organization ORDER BY updated_at LIMIT 1",
   );
   if (rows.length === 0) {
     await query(
-      `INSERT INTO master.organization (name, address, phone, email, tax_id, currency)
-       VALUES ($1,$2,$3,$4,$5,COALESCE($6,'PKR'))`,
-      [input.name, input.address, input.phone, input.email, input.tax_id, input.currency],
+      `INSERT INTO master.organization (name, address, phone, email, tax_id, currency, about)
+       VALUES ($1,$2,$3,$4,$5,COALESCE($6,'PKR'),$7)`,
+      [input.name, input.address, input.phone, input.email, input.tax_id, input.currency, input.about],
     );
   } else {
     await query(
       `UPDATE master.organization
        SET name=$1, address=$2, phone=$3, email=$4, tax_id=$5,
-           currency=COALESCE($6,currency), updated_at=NOW()
-       WHERE id=$7`,
-      [input.name, input.address, input.phone, input.email, input.tax_id, input.currency, rows[0].id],
+           currency=COALESCE($6,currency), about=$7, updated_at=NOW()
+       WHERE id=$8`,
+      [input.name, input.address, input.phone, input.email, input.tax_id, input.currency, input.about, rows[0].id],
     );
   }
   return { ok: true };

@@ -66,7 +66,7 @@ export function Nav({
         <img src="/logo.svg" alt="U.K Arts" className="nav-logo" width={38} height={38} />
         <div>
           <div className="brand-title">U.K Arts</div>
-          <div className="brand-sub">ERP · Accounting</div>
+          <div className="brand-sub">Cloth · Craft · Passion</div>
         </div>
       </div>
       <div className="nav-links">
