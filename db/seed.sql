@@ -16,9 +16,14 @@ UPDATE master.users SET password_hash = crypt('admin123', gen_salt('bf'))
 WHERE username = 'admin' AND password_hash = 'x';
 
 -- Organization defaults (used in print headers and settings)
-INSERT INTO master.organization (name, currency)
-SELECT 'U.K Arts', 'PKR'
+INSERT INTO master.organization (name, currency, about)
+SELECT 'U.K Arts', 'PKR',
+       'U.K Arts is a textile and garment house devoted to the craft of cloth — from grey purchase through processing and stitching to finished fashion. Every lot is handled with passion for quality, cut, and colour.'
 WHERE NOT EXISTS (SELECT 1 FROM master.organization);
+
+UPDATE master.organization
+SET about = 'U.K Arts is a textile and garment house devoted to the craft of cloth — from grey purchase through processing and stitching to finished fashion. Every lot is handled with passion for quality, cut, and colour.'
+WHERE about IS NULL;
 
 -- Chart of accounts (codes referenced by the automatic posting rules in the SDD)
 INSERT INTO accounting.accounts (account_code, account_name, account_type) VALUES

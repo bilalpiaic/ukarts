@@ -9,11 +9,12 @@ import { Combobox } from "./combobox";
 export interface Field {
   name: string;
   label: string;
-  type: "number" | "text" | "date" | "select" | "password";
+  type: "number" | "text" | "date" | "select" | "password" | "textarea";
   options?: { value: string; label: string }[];
   default?: string;
   step?: string;
   required?: boolean;
+  rows?: number;
 }
 
 type Msg = { kind: "ok" | "err"; text: string } | null;
@@ -133,6 +134,13 @@ export function ActionForm({
               options={f.options ?? []}
               value={values[f.name]}
               onChange={(v) => set(f.name, v)}
+            />
+          ) : f.type === "textarea" ? (
+            <textarea
+              value={values[f.name]}
+              onChange={(e) => set(f.name, e.target.value)}
+              required={f.required ?? true}
+              rows={f.rows ?? 5}
             />
           ) : (
             <input

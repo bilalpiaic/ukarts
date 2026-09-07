@@ -9,6 +9,7 @@ import {
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
+import { PrintOrgHeader } from "../print-header";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function Sales() {
 
   return (
     <div className="container">
+      <PrintOrgHeader title="Sales & Dispatch" />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 className="page-title">Sales &amp; Dispatch</h1>
         <PrintButton />

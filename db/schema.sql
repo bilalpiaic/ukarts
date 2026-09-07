@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS master.organization (
     tax_id VARCHAR(100),
     currency VARCHAR(10) NOT NULL DEFAULT 'PKR',
     fiscal_year_start VARCHAR(5) DEFAULT '07-01',
+    about TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -597,3 +598,6 @@ CREATE INDEX IF NOT EXISTS idx_journal_lines_party
     ON accounting.journal_lines(party_id);
 CREATE INDEX IF NOT EXISTS idx_document_files_entity
     ON master.document_files(entity_type, entity_id);
+
+-- Additive columns for existing databases (CREATE TABLE IF NOT EXISTS will not alter them)
+ALTER TABLE master.organization ADD COLUMN IF NOT EXISTS about TEXT;

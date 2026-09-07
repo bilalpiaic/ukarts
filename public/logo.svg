@@ -1,11 +1,46 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="U.K Arts">
-  <rect x="2.5" y="2.5" width="59" height="59" rx="13" fill="#f3e8cf" stroke="#8a5a2b" stroke-width="2.5"/>
-  <rect x="7.5" y="7.5" width="49" height="49" rx="9.5" fill="none" stroke="#c39b5f" stroke-width="1.1"/>
-  <!-- spool / bobbin motif behind the monogram -->
-  <g stroke="#c39b5f" stroke-width="1.4" opacity="0.55">
-    <line x1="16" y1="15" x2="48" y2="15"/>
-    <line x1="16" y1="49" x2="48" y2="49"/>
-  </g>
-  <text x="32" y="41" font-family="Georgia, 'Times New Roman', serif" font-size="25" font-weight="700" fill="#3a2c1c" text-anchor="middle" letter-spacing="0.5">UK</text>
-  <line x1="21" y1="46.5" x2="43" y2="46.5" stroke="#8a5a2b" stroke-width="1.6"/>
+  <defs>
+    <linearGradient id="ukarts-night" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a2744"/>
+      <stop offset="1" stop-color="#4a1c28"/>
+    </linearGradient>
+    <linearGradient id="ukarts-gold" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f3e2b0"/>
+      <stop offset="0.45" stop-color="#d4a84b"/>
+      <stop offset="1" stop-color="#8a5a2b"/>
+    </linearGradient>
+    <linearGradient id="ukarts-silk" x1="18" y1="22" x2="50" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7a1f2b"/>
+      <stop offset="0.5" stop-color="#d4a84b"/>
+      <stop offset="1" stop-color="#f4ead2"/>
+    </linearGradient>
+    <style>
+      .ukarts-thread {
+        stroke-dasharray: 90;
+        stroke-dashoffset: 0;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .ukarts-thread {
+          animation: ukarts-stitch 4.5s ease-in-out infinite;
+        }
+      }
+      @keyframes ukarts-stitch {
+        0% { stroke-dashoffset: 90; opacity: 0.55; }
+        35% { stroke-dashoffset: 0; opacity: 1; }
+        70% { stroke-dashoffset: 0; opacity: 1; }
+        100% { stroke-dashoffset: -90; opacity: 0.55; }
+      }
+    </style>
+  </defs>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="14" fill="url(#ukarts-night)" stroke="url(#ukarts-gold)" stroke-width="2.4"/>
+  <rect x="6" y="6" width="52" height="52" rx="10" fill="none" stroke="#c39b5f" stroke-opacity="0.45" stroke-width="0.9"/>
+  <!-- draped silk -->
+  <path d="M16 38c6-9 10-14 16-16 7-2 12 1 16 7 2 3 1 8-3 9-5 1-8-4-12-3-5 1-8 8-13 9-3 .6-6-1-4-6z" fill="url(#ukarts-silk)" opacity="0.92"/>
+  <!-- needle -->
+  <path d="M44.5 14.5 L22.5 46.5" stroke="url(#ukarts-gold)" stroke-width="2.6" stroke-linecap="round"/>
+  <ellipse cx="46.2" cy="12.8" rx="3.1" ry="2.2" transform="rotate(-52 46.2 12.8)" fill="none" stroke="url(#ukarts-gold)" stroke-width="1.6"/>
+  <circle cx="21.6" cy="47.8" r="1.15" fill="#f3e2b0"/>
+  <!-- stitching thread -->
+  <path class="ukarts-thread" d="M45 16 C38 24 33 28 28 33 C24 37 21 43 22 48" stroke="#f4ead2" stroke-width="1.15" fill="none" stroke-linecap="round"/>
+  <text x="32" y="30.5" font-family="Georgia, 'Times New Roman', serif" font-size="11" font-weight="700" fill="#f3e2b0" text-anchor="middle" letter-spacing="1.2">UK</text>
 </svg>

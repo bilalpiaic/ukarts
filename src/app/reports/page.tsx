@@ -10,6 +10,7 @@ import {
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
 import { ControlLedgerComposition, TrialBalanceWithSubs } from "../control-ledgers";
+import { PrintHeader } from "../print-header";
 import { DateFilter } from "./date-filter";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +42,7 @@ export default async function Reports({
 
   return (
     <div className="container">
-      <div className="print-header">
-        <h2 style={{ margin: 0 }}>{org?.name ?? "U.K Arts"}</h2>
-        <div>{org?.address}</div>
-        <div>Financial Reports — {periodText}</div>
-        <hr />
-      </div>
+      <PrintHeader org={org} title={`Financial Reports — ${periodText}`} />
 
       <h1 className="page-title">Reports Dashboard</h1>
       <Suspense fallback={<div className="toolbar" />}>
