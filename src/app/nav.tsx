@@ -63,7 +63,7 @@ export function Nav({
     <nav className="nav no-print">
       <div className="nav-brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="U.K Arts" className="nav-logo" width={38} height={38} />
+        <img src="/logo.png" alt="U.K Arts" className="nav-logo" width={44} height={44} />
         <div>
           <div className="brand-title">U.K Arts</div>
           <div className="brand-sub">Cloth · Craft · Passion</div>

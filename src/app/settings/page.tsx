@@ -51,9 +51,6 @@ export default async function Settings() {
           <div className="brand-preview">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="U.K Arts" className="brand-preview-logo" width={160} height={160} />
-            <p className="subtitle" style={{ marginTop: 10 }}>
-              U.K Arts — cloth, craft, and passion for textile.
-            </p>
           </div>
           <PrintHeader org={org} title="Print preview" preview />
         </div>
