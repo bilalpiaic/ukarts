@@ -145,6 +145,18 @@ provisions everything automatically:
 | `npm run db:setup` | Apply `db/schema.sql` + `db/seed.sql` (idempotent) |
 | `npm run db:reset` | Drop app schemas, then re-apply schema + seed      |
 
+### Fresh start (wipe test entries before go-live)
+
+`db/seed.sql` contains a versioned fresh-start block. It clears all operational
+data and business master data (parties, items, designs, journals, inventory,
+production, sales, attachments, audit logs) while keeping the chart of accounts,
+posting rules, units, system locations, login users, and organization settings.
+The wipe runs **once per generation**: `master.app_meta('fresh_start')` records
+the generation last applied, so routine deploys never touch live postings.
+
+To wipe test data again, increase `fresh_start_generation` in `db/seed.sql` and
+deploy (or run `npm run db:setup`). The next setup clears the data once.
+
 ## Project structure
 
 ```

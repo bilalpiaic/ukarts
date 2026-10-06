@@ -1,9 +1,10 @@
 -- U.K Arts ERP - production reference data. Idempotent (safe to re-run).
 -- Seeds only system setup: bootstrap admin, organization name, chart of
 -- accounts, posting rules, units, and warehouse locations.
--- A one-time fresh-start wipe clears leftover demo/sample operational data
+-- A versioned fresh-start wipe clears leftover demo/test operational data
 -- (parties, items, designs, journals, inventory, production, sales) while
--- keeping the standard chart of accounts. It does not run again after that.
+-- keeping the chart of accounts, users, and organization settings. It runs
+-- once per generation; bump the generation below to wipe again on deploy.
 
 -- Bootstrap administrator. The initial password is admin123 on first insert only;
 -- later password changes in Settings are preserved (ON CONFLICT DO NOTHING).
@@ -79,34 +80,37 @@ INSERT INTO master.units (unit_code, unit_name, decimal_precision) VALUES
     ('PCS', 'Pieces', 0)
 ON CONFLICT (unit_code) DO NOTHING;
 
--- System locations for every stage of the grey lifecycle (no sample parties).
-INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
-VALUES
-    ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
-    ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
-    ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
-    ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
-    ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
-ON CONFLICT (location_code) DO NOTHING;
-
 -- ---------------------------------------------------------------------------
--- One-time fresh start: empty operational ledgers. Keeps COA, posting rules,
--- units, system locations, and the bootstrap admin. Subsequent seed runs skip
--- this block so live client postings are not wiped on later deploys.
+-- Fresh start: empty operational ledgers and business master data. Keeps the
+-- chart of accounts, posting rules, control ledgers, units, system locations,
+-- login users, and organization settings.
+--
+-- The wipe runs once per generation. master.app_meta('fresh_start') records
+-- the generation that was last applied ('done' is the legacy first generation).
+-- To wipe test data again before go-live, increase fresh_start_generation; the
+-- next db:setup / Vercel deploy clears the data once and later runs skip it,
+-- so live client postings are never wiped by routine deploys.
 -- ---------------------------------------------------------------------------
 DO $$
+DECLARE
+  fresh_start_generation CONSTANT TEXT := '2';
+  applied_generation TEXT;
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM master.app_meta WHERE key = 'fresh_start' AND value = 'done'
-  ) THEN
+  SELECT value INTO applied_generation
+  FROM master.app_meta WHERE key = 'fresh_start';
+
+  IF applied_generation = fresh_start_generation THEN
     RETURN;
   END IF;
 
-  RAISE NOTICE 'Fresh start: clearing operational and sample master data (COA kept).';
+  RAISE NOTICE 'Fresh start generation %: clearing operational and business master data (COA, users, organization kept).',
+    fresh_start_generation;
 
-  UPDATE inventory.locations SET party_id = NULL WHERE party_id IS NOT NULL;
-
+  -- Every table that references a wiped table must be listed here (no CASCADE)
+  -- so a kept table can never be emptied silently. inventory.locations
+  -- references parties; the system locations are re-inserted right below.
   TRUNCATE TABLE
+    inventory.locations,
     master.document_files,
     audit.audit_logs,
     production.production_costs,
@@ -142,20 +146,33 @@ BEGIN
     master.designs,
     master.qualities,
     master.categories
-  RESTART IDENTITY CASCADE;
+  RESTART IDENTITY;
 
-  DELETE FROM master.users
-  WHERE username <> 'admin';
-
+  -- Legacy placeholder organization details from the original demo seed.
   UPDATE master.organization
   SET
     address = CASE WHEN address = 'Faisalabad, Pakistan' THEN NULL ELSE address END,
     phone = CASE WHEN phone = '+92-41-0000000' THEN NULL ELSE phone END,
     email = CASE WHEN email = 'info@ukarts.local' THEN NULL ELSE email END,
     tax_id = CASE WHEN tax_id = 'NTN-0000000' THEN NULL ELSE tax_id END,
-    updated_at = NOW();
+    updated_at = NOW()
+  WHERE address = 'Faisalabad, Pakistan'
+     OR phone = '+92-41-0000000'
+     OR email = 'info@ukarts.local'
+     OR tax_id = 'NTN-0000000';
 
   INSERT INTO master.app_meta (key, value)
-  VALUES ('fresh_start', 'done')
-  ON CONFLICT (key) DO UPDATE SET value = 'done', updated_at = NOW();
+  VALUES ('fresh_start', fresh_start_generation)
+  ON CONFLICT (key) DO UPDATE
+    SET value = EXCLUDED.value, updated_at = NOW();
 END $$;
+
+-- System locations for every stage of the grey lifecycle (no sample parties).
+INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+VALUES
+    ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+    ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+    ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+    ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+    ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
+ON CONFLICT (location_code) DO NOTHING;
