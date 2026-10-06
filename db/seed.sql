@@ -99,6 +99,15 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM master.app_meta WHERE key = 'fresh_start' AND value = 'done'
   ) THEN
+    -- Ensure system locations always exist even if fresh_start previously ran
+    INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+    VALUES
+        ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+        ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+        ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+        ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+        ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
+    ON CONFLICT (location_code) DO NOTHING;
     RETURN;
   END IF;
 
@@ -158,4 +167,14 @@ BEGIN
   INSERT INTO master.app_meta (key, value)
   VALUES ('fresh_start', 'done')
   ON CONFLICT (key) DO UPDATE SET value = 'done', updated_at = NOW();
+
+  -- Re-insert system locations cleared during the cascade truncate
+  INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+  VALUES
+      ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+      ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+      ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+      ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+      ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
+  ON CONFLICT (location_code) DO NOTHING;
 END $$;
