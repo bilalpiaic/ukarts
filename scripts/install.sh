@@ -14,6 +14,19 @@ fi
 PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1)"
 export PATH="$PG_BIN:$PATH"
 
+# The distro package creates a system cluster that also binds port 5432.
+# This environment uses a user cluster, so keep the package cluster off.
+if command -v pg_lsclusters >/dev/null 2>&1; then
+  while read -r ver name _; do
+    [ -n "${ver:-}" ] || continue
+    conf="/etc/postgresql/${ver}/${name}/start.conf"
+    if [ -f "$conf" ]; then
+      echo disabled | sudo tee "$conf" >/dev/null
+      sudo pg_ctlcluster "$ver" "$name" stop >/dev/null 2>&1 || true
+    fi
+  done < <(pg_lsclusters --no-header)
+fi
+
 # 2. Node dependencies (prefer the reproducible lockfile install).
 echo "==> Installing Node dependencies…"
 if [ -f package-lock.json ]; then
