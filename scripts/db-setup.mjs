@@ -69,8 +69,14 @@ async function main() {
     const { rows: journals } = await client.query(
       "SELECT count(*)::int AS n FROM accounting.journal_entries",
     );
+    const { rows: locations } = await client.query(
+      "SELECT count(*)::int AS n FROM inventory.locations",
+    );
+    const { rows: users } = await client.query(
+      "SELECT count(*)::int AS n FROM master.users",
+    );
     console.log(
-      `Done. COA ${accounts[0].n} accounts; parties ${parties[0].n}; items ${items[0].n}; journals ${journals[0].n}.`,
+      `Done. COA ${accounts[0].n} accounts; parties ${parties[0].n}; items ${items[0].n}; journals ${journals[0].n}; locations ${locations[0].n}; users ${users[0].n}.`,
     );
   } finally {
     await client.end();

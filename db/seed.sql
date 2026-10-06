@@ -1,7 +1,7 @@
 -- U.K Arts ERP - production reference data. Idempotent (safe to re-run).
 -- Seeds only system setup: bootstrap admin, organization name, chart of
 -- accounts, posting rules, units, and warehouse locations.
--- A one-time fresh-start wipe clears leftover demo/sample operational data
+-- A versioned one-time wipe clears leftover demo/testing operational data
 -- (parties, items, designs, journals, inventory, production, sales) while
 -- keeping the standard chart of accounts. It does not run again after that.
 
@@ -90,19 +90,31 @@ VALUES
 ON CONFLICT (location_code) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- One-time fresh start: empty operational ledgers. Keeps COA, posting rules,
--- units, system locations, and the bootstrap admin. Subsequent seed runs skip
--- this block so live client postings are not wiped on later deploys.
+-- One-time operational wipe. Keeps COA, posting rules, units, system
+-- locations, organization profile, and the bootstrap admin. Subsequent seed
+-- runs skip this block so live client postings are not wiped on later deploys.
+-- Key is versioned so a new fresh start can be requested without a full
+-- schema drop. Truncating parties CASCADE-clears inventory.locations, so the
+-- five system stores are re-inserted after the wipe.
 -- ---------------------------------------------------------------------------
 DO $$
 BEGIN
   IF EXISTS (
-    SELECT 1 FROM master.app_meta WHERE key = 'fresh_start' AND value = 'done'
+    SELECT 1 FROM master.app_meta
+    WHERE key = 'fresh_start_2026_10_06' AND value = 'done'
   ) THEN
+    INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+    VALUES
+        ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+        ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+        ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+        ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+        ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
+    ON CONFLICT (location_code) DO NOTHING;
     RETURN;
   END IF;
 
-  RAISE NOTICE 'Fresh start: clearing operational and sample master data (COA kept).';
+  RAISE NOTICE 'Fresh start 2026-10-06: clearing operational and testing data (COA kept).';
 
   UPDATE inventory.locations SET party_id = NULL WHERE party_id IS NOT NULL;
 
@@ -155,7 +167,18 @@ BEGIN
     tax_id = CASE WHEN tax_id = 'NTN-0000000' THEN NULL ELSE tax_id END,
     updated_at = NOW();
 
+  INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
+  VALUES
+      ('OWNER_GREY',      'Owner Grey Store',      'OWNER_GREY',      NULL),
+      ('PROCESSED_STORE', 'Processed Cloth Store', 'PROCESSED_STORE', NULL),
+      ('FINISHED_GOODS',  'Finished Goods Store',  'FINISHED_GOODS',  NULL),
+      ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
+      ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
+  ON CONFLICT (location_code) DO NOTHING;
+
   INSERT INTO master.app_meta (key, value)
-  VALUES ('fresh_start', 'done')
+  VALUES
+    ('fresh_start', 'done'),
+    ('fresh_start_2026_10_06', 'done')
   ON CONFLICT (key) DO UPDATE SET value = 'done', updated_at = NOW();
 END $$;
