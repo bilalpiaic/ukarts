@@ -1,3 +1,10 @@
+import {
+  ACCOUNT_CODE_BASES,
+  ACCOUNT_TYPES,
+  NEW_SERIES,
+  allocateAccountCode,
+  isAccountType,
+} from "./account-codes";
 import { query, withTransaction } from "./db";
 
 // ---------------------------------------------------------------------------
@@ -289,27 +296,59 @@ export async function deleteUser(input: { id: string }) {
 // ---------------------------------------------------------------------------
 // Chart of Accounts
 // ---------------------------------------------------------------------------
-const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
 
 export async function createAccount(input: {
-  account_code: string;
   account_name: string;
   account_type: string;
+  serial_base?: string;
   is_postable?: boolean | string;
 }) {
   const type = String(input.account_type ?? "").toUpperCase();
-  if (!ACCOUNT_TYPES.includes(type)) {
+  if (!isAccountType(type)) {
     throw new Error(`Account type must be one of ${ACCOUNT_TYPES.join(", ")}.`);
   }
-  if (!input.account_code?.trim()) throw new Error("Account code is required.");
+  if (!input.account_name?.trim()) throw new Error("Account name is required.");
   const postable =
     input.is_postable === undefined ? true : input.is_postable === true || input.is_postable === "true" || input.is_postable === "YES";
-  const res = await query<{ id: string }>(
-    `INSERT INTO accounting.accounts (account_code, account_name, account_type, is_postable)
-     VALUES ($1,$2,$3,$4) RETURNING id`,
-    [input.account_code.trim(), input.account_name, type, postable],
-  );
-  return { id: res[0].id };
+
+  return withTransaction(async (client) => {
+    await client.query("LOCK TABLE accounting.accounts IN SHARE ROW EXCLUSIVE MODE");
+    const existing = await client.query<{
+      id: string;
+      account_code: string;
+      account_type: string;
+    }>("SELECT id, account_code, account_type FROM accounting.accounts");
+    const rawBase = input.serial_base?.trim();
+    let serialBase = rawBase || String(ACCOUNT_CODE_BASES[type]);
+    let parentId: string | null = null;
+    if (serialBase !== NEW_SERIES) {
+      const parent = existing.rows.find((r) => r.account_code === serialBase);
+      if (!parent) {
+        if (rawBase) {
+          throw new Error(`Serial point ${serialBase} was not found.`);
+        }
+        serialBase = NEW_SERIES;
+      } else if (parent.account_type !== type) {
+        throw new Error(`Serial point ${serialBase} is not a ${type} account.`);
+      } else {
+        parentId = parent.id;
+      }
+    }
+
+    const accountCode = allocateAccountCode(
+      existing.rows.map((r) => r.account_code),
+      type,
+      serialBase,
+    );
+
+    const res = await client.query<{ id: string }>(
+      `INSERT INTO accounting.accounts
+         (account_code, account_name, account_type, is_postable, parent_account_id)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [accountCode, input.account_name.trim(), type, postable, parentId],
+    );
+    return { id: res.rows[0].id, account_code: accountCode };
+  });
 }
 
 export async function updateAccount(input: {
@@ -319,7 +358,7 @@ export async function updateAccount(input: {
   status?: string;
 }) {
   const type = String(input.account_type ?? "").toUpperCase();
-  if (!ACCOUNT_TYPES.includes(type)) {
+  if (!isAccountType(type)) {
     throw new Error(`Account type must be one of ${ACCOUNT_TYPES.join(", ")}.`);
   }
   await query(

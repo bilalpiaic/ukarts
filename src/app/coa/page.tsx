@@ -4,6 +4,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { listDesigns, listGreyPurchases, listItems, listParties } from "@/lib/admin";
 import { getControlLedgers, getJournalEntriesList, listAccounts } from "@/lib/erp";
 import { money } from "@/lib/format";
+import { AccountCreateForm } from "../account-create-form";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable, ActionButton, DeleteButton } from "../admin-controls";
 import { ControlLedgerComposition } from "../control-ledgers";
@@ -31,28 +32,12 @@ export default async function COA() {
       <div className="grid">
         {/* Chart of Accounts */}
         <div className="card">
-          <ActionForm
-            apiBase="/api/admin"
-            action="account-create"
-            title="Add Account"
-            submitLabel="Create Account"
-            successText="Account created."
-            fields={[
-              { name: "account_code", label: "Code", type: "text" },
-              { name: "account_name", label: "Name", type: "text" },
-              {
-                name: "account_type",
-                label: "Type",
-                type: "select",
-                options: [
-                  { value: "ASSET", label: "Asset" },
-                  { value: "LIABILITY", label: "Liability" },
-                  { value: "EQUITY", label: "Equity" },
-                  { value: "INCOME", label: "Income" },
-                  { value: "EXPENSE", label: "Expense" },
-                ],
-              },
-            ]}
+          <AccountCreateForm
+            accounts={accounts.map((a) => ({
+              account_code: a.account_code,
+              account_name: a.account_name,
+              account_type: a.account_type,
+            }))}
           />
         </div>
         <div className="card">
