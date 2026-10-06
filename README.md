@@ -130,9 +130,8 @@ provisions everything automatically:
 
 - `scripts/install.sh` — installs PostgreSQL (if missing), runs `npm ci`, and
   initializes a local Postgres cluster. Idempotent.
-- `scripts/start.sh` — starts PostgreSQL, ensures the app role/database, and
-  applies the schema + seed on every boot. Idempotent.
-- A `next dev` terminal serves the app on port 3000.
+- `scripts/start.sh` — starts PostgreSQL, ensures the app role/database,
+  applies the schema + seed, then serves `next dev` on port 3000. Idempotent.
 
 ## npm scripts
 
