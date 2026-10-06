@@ -305,6 +305,16 @@ button:disabled {
   font-weight: 700;
 }
 
+.card.danger {
+  border-color: rgba(143, 47, 42, 0.5);
+  background: var(--paper-panel);
+}
+
+.card.danger h2 {
+  color: var(--oxblood);
+  border-bottom-color: rgba(143, 47, 42, 0.45);
+}
+
 .full {
   grid-column: 1 / -1;
 }

@@ -1,16 +1,21 @@
 import { redirect } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
-import { listUsers } from "@/lib/admin";
+import { getDataFootprint, listUsers } from "@/lib/admin";
 import { getOrganization } from "@/lib/erp";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable } from "../admin-controls";
+import { FreshStartCard } from "./fresh-start";
 
 export const dynamic = "force-dynamic";
 
 export default async function Settings() {
   const session = await getSession();
   if (!isAdmin(session)) redirect("/");
-  const [org, users] = await Promise.all([getOrganization(), listUsers()]);
+  const [org, users, footprint] = await Promise.all([
+    getOrganization(),
+    listUsers(),
+    getDataFootprint(),
+  ]);
 
   return (
     <div className="container">
@@ -88,6 +93,10 @@ export default async function Settings() {
           ) : (
             <AdminEntityTable kind="user" rows={users} />
           )}
+        </div>
+
+        <div className="full">
+          <FreshStartCard footprint={footprint} />
         </div>
       </div>
     </div>
