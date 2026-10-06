@@ -1,4 +1,10 @@
 import { query, withTransaction } from "./db";
+import {
+  FRESH_START_PHRASE,
+  FRESH_START_SCOPES,
+  type DataFootprint,
+  type FreshStartScope,
+} from "./fresh-start";
 
 // ---------------------------------------------------------------------------
 // Organization
@@ -470,6 +476,125 @@ export async function deleteDocument(input: { docType: string; id: string }) {
     }
     throw err;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Fresh start: clear the entries made while testing and hand over an empty
+// system. Reference data (chart of accounts, posting rules, units, system
+// locations, organization profile) and login accounts are always kept.
+// ---------------------------------------------------------------------------
+
+/** What a fresh start would remove right now, for the confirmation screen. */
+export async function getDataFootprint(): Promise<DataFootprint> {
+  const rows = await query<Record<string, number>>(
+    `SELECT
+       (SELECT COUNT(*) FROM accounting.journal_entries)::int        AS vouchers,
+       (SELECT COUNT(*) FROM inventory.inventory_movements)::int     AS movements,
+       (SELECT COUNT(*) FROM inventory.grey_purchases)::int          AS purchases,
+       (SELECT COUNT(*) FROM inventory.grey_lots)::int               AS lots,
+       (SELECT COUNT(*) FROM sales.sale_orders)::int                 AS sale_orders,
+       (SELECT COUNT(*) FROM production.production_orders)::int      AS production_orders,
+       (SELECT COUNT(*) FROM production.processing_orders)::int      AS processing_orders,
+       (SELECT COUNT(*) FROM production.stitching_orders)::int       AS stitching_orders,
+       (SELECT COUNT(*) FROM master.document_files)::int             AS attachments,
+       (SELECT COUNT(*) FROM master.parties)::int                    AS parties,
+       (SELECT COUNT(*) FROM master.items)::int                      AS items,
+       (SELECT COUNT(*) FROM master.designs)::int                    AS designs,
+       (SELECT COUNT(*) FROM master.categories)::int                 AS categories,
+       (SELECT COUNT(*) FROM master.qualities)::int                  AS qualities`,
+  );
+  const c = rows[0];
+  const meta = await query<{ value: string }>(
+    "SELECT value FROM master.app_meta WHERE key = 'last_fresh_start'",
+  );
+  const lastFreshStart = describeFreshStart(meta[0]?.value);
+  const entries = [
+    { label: "Journal vouchers", count: c.vouchers },
+    { label: "Inventory movements", count: c.movements },
+    { label: "Grey purchases", count: c.purchases },
+    { label: "Grey lots", count: c.lots },
+    { label: "Sale orders", count: c.sale_orders },
+    { label: "Production orders", count: c.production_orders },
+    { label: "Processing orders", count: c.processing_orders },
+    { label: "Stitching orders", count: c.stitching_orders },
+    { label: "Attachments", count: c.attachments },
+  ];
+  const masters = [
+    { label: "Parties", count: c.parties },
+    { label: "Items", count: c.items },
+    { label: "Designs", count: c.designs },
+    { label: "Categories", count: c.categories },
+    { label: "Qualities", count: c.qualities },
+  ];
+  return {
+    entries,
+    masters,
+    totalEntries: entries.reduce((s, r) => s + r.count, 0),
+    totalMasters: masters.reduce((s, r) => s + r.count, 0),
+    lastFreshStart,
+  };
+}
+
+/** Render the app_meta stamp written by the UI action and the CLI script. */
+function describeFreshStart(raw: string | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const { at, by, scope } = JSON.parse(raw) as {
+      at: string;
+      by: string;
+      scope: FreshStartScope;
+    };
+    const what =
+      scope === "ENTRIES" ? "documents" : "documents and master records";
+    return `${at.replace("T", " ").slice(0, 16)} UTC — ${by} cleared ${what}`;
+  } catch {
+    // A hand-edited value must not take the Settings page down.
+    return raw;
+  }
+}
+
+export async function freshStart(
+  input: { confirm?: string; scope?: string },
+  actor?: { uid: string; username: string },
+) {
+  const typed = String(input.confirm ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+  if (typed !== FRESH_START_PHRASE) {
+    throw new Error(`Type ${FRESH_START_PHRASE} in the confirmation box to continue.`);
+  }
+  const scope = String(
+    input.scope ?? "ENTRIES_AND_MASTERS",
+  ).toUpperCase() as FreshStartScope;
+  if (!FRESH_START_SCOPES.includes(scope)) {
+    throw new Error("Choose what to clear before continuing.");
+  }
+  const keepMasters = scope === "ENTRIES";
+
+  const cleared = await withTransaction(async (client) => {
+    const res = await client.query("SELECT master.fresh_start($1) AS cleared", [
+      keepMasters,
+    ]);
+    const counts = res.rows[0].cleared as Record<string, number>;
+    await client.query(
+      `INSERT INTO master.app_meta (key, value) VALUES ('last_fresh_start', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [
+        JSON.stringify({
+          at: new Date().toISOString(),
+          by: actor?.username ?? "unknown",
+          scope,
+        }),
+      ],
+    );
+    // The reset itself stays on record even though the old trail was cleared.
+    await client.query(
+      `INSERT INTO audit.audit_logs (user_id, table_name, record_id, action, new_data)
+       VALUES ($1, 'master.app_meta', gen_random_uuid(), 'FRESH_START', $2::jsonb)`,
+      [actor?.uid ?? null, JSON.stringify({ scope, cleared: counts })],
+    );
+    return counts;
+  });
+
+  return { ok: true, scope, cleared };
 }
 
 // Lists for the admin document panel.

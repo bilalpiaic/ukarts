@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import type { SessionData } from "@/lib/session";
 import * as admin from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
-type Handler = (body: Record<string, unknown>) => Promise<unknown>;
+type Handler = (
+  body: Record<string, unknown>,
+  session: SessionData,
+) => Promise<unknown>;
 
 const handlers: Record<string, Handler> = {
   "org-update": (b) => admin.updateOrganization(b as never),
@@ -26,14 +30,17 @@ const handlers: Record<string, Handler> = {
   "journal-unpost": (b) => admin.unpostJournalEntry(b as never),
   "journal-delete": (b) => admin.deleteJournalEntry(b as never),
   "document-delete": (b) => admin.deleteDocument(b as never),
+  "fresh-start": (b, s) =>
+    admin.freshStart(b as never, { uid: s.uid, username: s.username }),
 };
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ name: string }> },
 ) {
+  let session: SessionData;
   try {
-    await requireAdmin();
+    session = await requireAdmin();
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 403 });
   }
@@ -44,7 +51,7 @@ export async function POST(
   }
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const result = await handler(body);
+    const result = await handler(body, session);
     return NextResponse.json({ ok: true, ...(result as object) });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
