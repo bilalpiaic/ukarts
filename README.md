@@ -144,6 +144,33 @@ provisions everything automatically:
 | `npm run lint`     | Lint                                               |
 | `npm run db:setup` | Apply `db/schema.sql` + `db/seed.sql` (idempotent) |
 | `npm run db:reset` | Drop app schemas, then re-apply schema + seed      |
+| `npm run db:fresh-start` | Report the entries in the database; add `-- --yes` to delete them |
+
+## Fresh start (clearing testing entries)
+
+Before handing the system over, the entries recorded while testing can be
+cleared without touching the setup. A fresh start always keeps the chart of
+accounts, posting rules, control ledgers, units, store locations, the company
+profile, and every login account; it deletes vouchers, inventory and production
+movements, purchases, lots, orders, bills, attachments, and the audit trail.
+Deletions are permanent — back up the database first if the entries may still
+be needed.
+
+There are three ways to run it, all using the same `master.fresh_start()`
+routine in `db/schema.sql`:
+
+- **Settings → Fresh Start** (admins only): choose whether parties, items, and
+  designs go too, type `FRESH START` to confirm, and the cleared counts are
+  reported back. Use this for a database that is already live.
+- **`npm run db:fresh-start`**: prints what is in the database. Re-run with
+  `-- --yes` to clear it, plus `-- --yes --keep-masters` to keep parties, items,
+  and designs. Reference data is re-seeded afterwards.
+- **On the next deploy**: bump the `FRESH START TOKEN` value at the top of
+  `db/seed.sql`. The wipe then runs once for that token and is skipped on later
+  deploys, so a routine release never clears live postings.
+
+To rebuild the database from nothing instead (schema included), use
+`npm run db:reset`.
 
 ## Project structure
 
@@ -158,7 +185,8 @@ provisions everything automatically:
 ├── scripts/
 │   ├── install.sh             # Environment install (idempotent)
 │   ├── start.sh               # Environment start (idempotent)
-│   └── db-setup.mjs           # Apply schema + seed via node-postgres
+│   ├── db-setup.mjs           # Apply schema + seed via node-postgres
+│   └── db-fresh-start.mjs     # Delete testing entries, keep reference data
 └── src/
     ├── lib/
     │   ├── db.ts              # Pooled connection + withTransaction helper

@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:setup": "node scripts/db-setup.mjs",
-    "db:reset": "node scripts/db-setup.mjs --reset"
+    "db:reset": "node scripts/db-setup.mjs --reset",
+    "db:fresh-start": "node scripts/db-fresh-start.mjs"
   },
   "dependencies": {
     "next": "^15.5.4",

@@ -2,13 +2,7 @@
 // Apply the schema and seed to the database referenced by DATABASE_URL.
 // Idempotent: safe to run on every environment start. Pass --reset to drop
 // and recreate all application schemas first.
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import pg from "pg";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
+import { connect, readSql } from "./pg-client.mjs";
 
 const reset = process.argv.includes("--reset");
 const ifConfigured = process.argv.includes("--if-configured");
@@ -21,21 +15,8 @@ if (ifConfigured && !process.env.DATABASE_URL) {
   process.exit(0);
 }
 
-const connectionString =
-  process.env.DATABASE_URL ?? "postgres://ukarts:ukarts@localhost:5432/ukarts";
-
-function requiresSsl(cs) {
-  return /sslmode=require|neon\.tech|pooler\.|supabase|amazonaws|render\.com/i.test(
-    cs,
-  );
-}
-
 async function main() {
-  const client = new pg.Client({
-    connectionString,
-    ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
-  });
-  await client.connect();
+  const client = await connect();
   try {
     if (reset) {
       console.log("Dropping application schemas…");
@@ -49,13 +30,11 @@ async function main() {
       `);
     }
 
-    const schema = await readFile(join(root, "db", "schema.sql"), "utf8");
     console.log("Applying schema…");
-    await client.query(schema);
+    await client.query(await readSql("schema.sql"));
 
-    const seed = await readFile(join(root, "db", "seed.sql"), "utf8");
     console.log("Applying seed…");
-    await client.query(seed);
+    await client.query(await readSql("seed.sql"));
 
     const { rows: accounts } = await client.query(
       "SELECT count(*)::int AS n FROM accounting.accounts",
