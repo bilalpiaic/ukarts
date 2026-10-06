@@ -38,6 +38,7 @@ const SUMMARY_KEYS: { key: string; label: string; money?: boolean }[] = [
   { key: "netPayable", label: "net payable", money: true },
   { key: "shortageRecovery", label: "recovery", money: true },
   { key: "totalGreyRequired", label: "grey required", money: true },
+  { key: "account_code", label: "code" },
 ];
 
 function summarize(data: Record<string, unknown>): string {

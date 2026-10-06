@@ -1033,7 +1033,17 @@ These actions are available on the Voucher detail page and in the COA records pa
 The former Admin screen is now the Chart of Accounts workspace: create, edit,
 activate/deactivate and delete accounts (deletion blocked once an account has
 postings), alongside party and item master data and the document/voucher records
-panel. User administration (create/edit/reset-password/deactivate users) lives
+panel. New accounts do not take a typed code. Codes are auto-serialised from the
+designated serial points of the standard COA:
+
+- Assets 1000–1999 (Cash 1000, AR 1100, Grey Inventory 1200, …).
+- Liabilities 2000–2999 (Supplier Payable 2000, Processor Payable 2100, …).
+- Equity 3000–3999, Income 4000–4999, Expenses 5000–5999.
+
+Creating under a serial point assigns the next free child (1000 → 1001, 1002, …).
+Choosing a new series opens the next unused hundred-based point (next Asset
+series is 1500). The assigned code is shown before submit and returned on create.
+User administration (create/edit/reset-password/deactivate users) lives
 on the Settings screen next to the organization profile. Login usernames are
 listed there with a dedicated Change password action; credentials are never
 printed on the public sign-in page. The old /admin route redirects to /coa.

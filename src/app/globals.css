@@ -421,6 +421,11 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(138, 90, 43, 0.16);
 }
 
+input:read-only {
+  background: #f3ead4;
+  color: var(--ink-soft);
+}
+
 .msg {
   margin-top: 10px;
   font-size: 13px;
