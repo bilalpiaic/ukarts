@@ -579,6 +579,94 @@ BEGIN
 END;
 $$;
 
+-- Clear every entry recorded in the system and return the counts removed.
+-- Reference data is always kept: chart of accounts, posting rules, control
+-- ledgers, units, system locations, the organization profile, and logins.
+-- Deletes run child-first on purpose: an unexpected foreign key then raises
+-- instead of TRUNCATE ... CASCADE silently emptying a table that must survive
+-- (inventory.locations references master.parties, so it is such a table).
+CREATE OR REPLACE FUNCTION master.fresh_start(
+    p_keep_masters BOOLEAN DEFAULT FALSE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    cleared JSONB;
+BEGIN
+    SELECT jsonb_build_object(
+        'journal_entries',  (SELECT COUNT(*) FROM accounting.journal_entries),
+        'journal_lines',    (SELECT COUNT(*) FROM accounting.journal_lines),
+        'inventory_movements', (SELECT COUNT(*) FROM inventory.inventory_movements),
+        'grey_purchases',   (SELECT COUNT(*) FROM inventory.grey_purchases),
+        'grey_lots',        (SELECT COUNT(*) FROM inventory.grey_lots),
+        'sale_orders',      (SELECT COUNT(*) FROM sales.sale_orders),
+        'production_orders', (SELECT COUNT(*) FROM production.production_orders),
+        'processing_orders', (SELECT COUNT(*) FROM production.processing_orders),
+        'stitching_orders', (SELECT COUNT(*) FROM production.stitching_orders),
+        'attachments',      (SELECT COUNT(*) FROM master.document_files),
+        'audit_logs',       (SELECT COUNT(*) FROM audit.audit_logs),
+        'parties', CASE WHEN p_keep_masters THEN 0
+                        ELSE (SELECT COUNT(*) FROM master.parties) END,
+        'items',   CASE WHEN p_keep_masters THEN 0
+                        ELSE (SELECT COUNT(*) FROM master.items) END,
+        'designs', CASE WHEN p_keep_masters THEN 0
+                        ELSE (SELECT COUNT(*) FROM master.designs) END
+    ) INTO cleared;
+
+    DELETE FROM master.document_files;
+    DELETE FROM audit.audit_logs;
+
+    -- Stitching
+    DELETE FROM production.production_costs;
+    DELETE FROM production.stitcher_material_settlements;
+    DELETE FROM production.stitching_bill_lines;
+    DELETE FROM production.stitching_bills;
+    DELETE FROM production.stitching_production_receipts;
+    DELETE FROM production.stitching_material_issues;
+    DELETE FROM production.finished_goods_receipts;
+    DELETE FROM production.stitching_orders;
+
+    -- Processing
+    DELETE FROM production.processor_shortages;
+    DELETE FROM production.processing_bill_lines;
+    DELETE FROM production.processing_bills;
+    DELETE FROM production.processing_receipt_lines;
+    DELETE FROM production.processing_receipts;
+    DELETE FROM production.processing_order_lots;
+    DELETE FROM production.processing_orders;
+
+    -- General ledger and inventory ledger
+    DELETE FROM accounting.journal_lines;
+    DELETE FROM accounting.journal_entries;
+    DELETE FROM inventory.grey_allocations;
+    DELETE FROM inventory.inventory_movements;
+    DELETE FROM inventory.inventory_transactions;
+
+    -- Planning, sales, and purchasing documents
+    DELETE FROM production.production_bom;
+    DELETE FROM production.production_orders;
+    DELETE FROM sales.sale_order_items;
+    DELETE FROM sales.sale_orders;
+    DELETE FROM inventory.grey_lots;
+    DELETE FROM inventory.grey_purchase_lines;
+    DELETE FROM inventory.grey_purchases;
+
+    IF NOT p_keep_masters THEN
+        -- Processor/stitcher floors go back to unassigned system locations.
+        UPDATE inventory.locations SET party_id = NULL WHERE party_id IS NOT NULL;
+        DELETE FROM master.party_roles;
+        DELETE FROM master.parties;
+        DELETE FROM master.items;
+        DELETE FROM master.designs;
+        DELETE FROM master.qualities;
+        DELETE FROM master.categories;
+    END IF;
+
+    RETURN cleared;
+END;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Recommended indexes
 -- ---------------------------------------------------------------------------

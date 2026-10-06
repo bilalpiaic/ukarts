@@ -1,9 +1,35 @@
 -- U.K Arts ERP - production reference data. Idempotent (safe to re-run).
 -- Seeds only system setup: bootstrap admin, organization name, chart of
 -- accounts, posting rules, units, and warehouse locations.
--- A one-time fresh-start wipe clears leftover demo/sample operational data
--- (parties, items, designs, journals, inventory, production, sales) while
--- keeping the standard chart of accounts. It does not run again after that.
+--
+-- The file opens with a one-time fresh start: bump FRESH START TOKEN below to
+-- hand over an empty database on the next deploy. The wipe runs once per token
+-- and is skipped afterwards, so routine releases never clear live postings.
+-- Admins can also reset on demand from Settings -> Fresh start.
+
+-- ---------------------------------------------------------------------------
+-- One-time fresh start (runs before the inserts below, so any reference data
+-- it touches is immediately restored).
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  -- FRESH START TOKEN: change this value to schedule one more wipe on deploy.
+  token TEXT := '2026-10-06-clear-testing-entries';
+  cleared JSONB;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM master.app_meta WHERE key = 'fresh_start' AND value = token
+  ) THEN
+    RETURN;
+  END IF;
+
+  cleared := master.fresh_start();
+  RAISE NOTICE 'Fresh start % applied: %', token, cleared;
+
+  INSERT INTO master.app_meta (key, value)
+  VALUES ('fresh_start', token)
+  ON CONFLICT (key) DO UPDATE SET value = token, updated_at = NOW();
+END $$;
 
 -- Bootstrap administrator. The initial password is admin123 on first insert only;
 -- later password changes in Settings are preserved (ON CONFLICT DO NOTHING).
@@ -88,74 +114,3 @@ VALUES
     ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
     ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
 ON CONFLICT (location_code) DO NOTHING;
-
--- ---------------------------------------------------------------------------
--- One-time fresh start: empty operational ledgers. Keeps COA, posting rules,
--- units, system locations, and the bootstrap admin. Subsequent seed runs skip
--- this block so live client postings are not wiped on later deploys.
--- ---------------------------------------------------------------------------
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM master.app_meta WHERE key = 'fresh_start' AND value = 'done'
-  ) THEN
-    RETURN;
-  END IF;
-
-  RAISE NOTICE 'Fresh start: clearing operational and sample master data (COA kept).';
-
-  UPDATE inventory.locations SET party_id = NULL WHERE party_id IS NOT NULL;
-
-  TRUNCATE TABLE
-    master.document_files,
-    audit.audit_logs,
-    production.production_costs,
-    production.stitcher_material_settlements,
-    production.stitching_bill_lines,
-    production.stitching_bills,
-    production.stitching_production_receipts,
-    production.stitching_material_issues,
-    production.stitching_orders,
-    production.finished_goods_receipts,
-    production.processor_shortages,
-    production.processing_bill_lines,
-    production.processing_bills,
-    production.processing_receipt_lines,
-    production.processing_receipts,
-    production.processing_order_lots,
-    production.processing_orders,
-    production.production_bom,
-    production.production_orders,
-    inventory.grey_allocations,
-    inventory.inventory_movements,
-    inventory.inventory_transactions,
-    inventory.grey_lots,
-    inventory.grey_purchase_lines,
-    inventory.grey_purchases,
-    sales.sale_order_items,
-    sales.sale_orders,
-    accounting.journal_lines,
-    accounting.journal_entries,
-    master.party_roles,
-    master.parties,
-    master.items,
-    master.designs,
-    master.qualities,
-    master.categories
-  RESTART IDENTITY CASCADE;
-
-  DELETE FROM master.users
-  WHERE username <> 'admin';
-
-  UPDATE master.organization
-  SET
-    address = CASE WHEN address = 'Faisalabad, Pakistan' THEN NULL ELSE address END,
-    phone = CASE WHEN phone = '+92-41-0000000' THEN NULL ELSE phone END,
-    email = CASE WHEN email = 'info@ukarts.local' THEN NULL ELSE email END,
-    tax_id = CASE WHEN tax_id = 'NTN-0000000' THEN NULL ELSE tax_id END,
-    updated_at = NOW();
-
-  INSERT INTO master.app_meta (key, value)
-  VALUES ('fresh_start', 'done')
-  ON CONFLICT (key) DO UPDATE SET value = 'done', updated_at = NOW();
-END $$;
