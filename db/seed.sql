@@ -101,7 +101,10 @@ DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM master.app_meta
-    WHERE key = 'fresh_start_2026_10_06' AND value = 'done'
+    WHERE key IN ('fresh_start_2026_10_06') AND value = 'done'
+  ) OR EXISTS (
+    SELECT 1 FROM master.app_meta
+    WHERE key = 'fresh_start' AND value = '2'
   ) THEN
     INSERT INTO inventory.locations (location_code, location_name, location_type, party_id)
     VALUES
@@ -111,6 +114,12 @@ BEGIN
         ('BG_PROCESSOR',    'Processor Floor',       'PROCESSOR',       NULL),
         ('STITCHER',        'Stitcher Floor',        'STITCHER',        NULL)
     ON CONFLICT (location_code) DO NOTHING;
+    -- Align markers so a generation-based seed ('2') and this key both skip.
+    INSERT INTO master.app_meta (key, value)
+    VALUES
+      ('fresh_start', '2'),
+      ('fresh_start_2026_10_06', 'done')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
     RETURN;
   END IF;
 
@@ -178,7 +187,7 @@ BEGIN
 
   INSERT INTO master.app_meta (key, value)
   VALUES
-    ('fresh_start', 'done'),
+    ('fresh_start', '2'),
     ('fresh_start_2026_10_06', 'done')
-  ON CONFLICT (key) DO UPDATE SET value = 'done', updated_at = NOW();
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 END $$;
