@@ -491,6 +491,16 @@ export async function deleteDocument(input: { docType: string; id: string }) {
         await client.query("DELETE FROM inventory.grey_purchases WHERE id=$1", [input.id]);
         break;
       }
+      case "MANUAL_SALE": {
+        await client.query("DELETE FROM sales.manual_invoice_lines WHERE invoice_id=$1", [input.id]);
+        await client.query(
+          "UPDATE sales.manual_invoices SET journal_entry_id = NULL WHERE id = $1",
+          [input.id],
+        );
+        await deletePostings(client, "MANUAL_SALE", input.id);
+        await client.query("DELETE FROM sales.manual_invoices WHERE id=$1", [input.id]);
+        break;
+      }
       case "SALE_ORDER": {
         await client.query("DELETE FROM sales.dispatches WHERE sale_order_id=$1", [input.id]);
         await deletePostings(client, "SALE_ORDER", input.id);

@@ -11,6 +11,7 @@ import {
   type FilterableAccount,
   type ManualVoucherType,
 } from "./vouchers";
+import { buildManualSalesJournal, type SalesPaymentType } from "./sales-invoice";
 
 /** Resolve the seeded admin user id (used as posted_by). */
 async function getAdminUserId(client: PoolClient): Promise<string> {
@@ -1493,6 +1494,225 @@ export async function getDispatch(id: string): Promise<DispatchDocument | null> 
 export async function listDispatches(): Promise<DispatchDocument[]> {
   return query<DispatchDocument>(
     `${DISPATCH_SELECT} ORDER BY d.created_at DESC LIMIT 100`,
+  );
+}
+
+export interface ManualInvoiceLine {
+  line_number: number;
+  description: string;
+  quantity: string;
+  rate: string;
+  amount: string;
+}
+
+export interface ManualInvoiceTreatment {
+  line_number: number;
+  account_code: string;
+  account_name: string;
+  party_name: string | null;
+  debit: string;
+  credit: string;
+  description: string | null;
+}
+
+export interface ManualInvoiceDocument {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  payment_type: string;
+  gross_amount: string;
+  discount_amount: string;
+  tax_amount: string;
+  net_amount: string;
+  narration: string | null;
+  status: string;
+  journal_entry_id: string | null;
+  voucher_number: string | null;
+  customer_name: string;
+  customer_address: string | null;
+  customer_phone: string | null;
+  lines: ManualInvoiceLine[];
+  treatment: ManualInvoiceTreatment[];
+}
+
+export interface ManualInvoiceSummary {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  payment_type: string;
+  net_amount: string;
+  customer_name: string;
+  journal_entry_id: string | null;
+  voucher_number: string | null;
+}
+
+/**
+ * Manual sales invoice. Does not move stock and does not require a sale order.
+ * The journal follows buildManualSalesJournal: settlement account, discount,
+ * sales income, and sales tax payable.
+ */
+export async function createManualSalesInvoice(input: {
+  customerCode: string;
+  paymentType: SalesPaymentType;
+  discount?: number;
+  salesTax?: number;
+  date: string;
+  narration?: string;
+  lines: { description?: string; quantity?: number; rate?: number }[];
+}) {
+  const prepared = (input.lines ?? [])
+    .map((l) => ({
+      description: (l.description ?? "").trim(),
+      quantity: Number(l.quantity),
+      rate: Number(l.rate),
+    }))
+    .filter((l) => l.description || l.quantity || l.rate)
+    .map((l) => ({
+      ...l,
+      amount: round2(l.quantity * l.rate),
+    }));
+  if (prepared.length === 0) throw new Error("Enter at least one invoice line.");
+  for (const line of prepared) {
+    if (!line.description) throw new Error("Each invoice line needs a description.");
+    if (!(line.quantity > 0)) throw new Error("Each invoice line needs a quantity greater than zero.");
+    if (!(line.rate >= 0)) throw new Error("Rate cannot be negative.");
+    if (!(line.amount > 0)) throw new Error("Each invoice line needs an amount greater than zero.");
+  }
+
+  const gross = round2(prepared.reduce((s, l) => s + l.amount, 0));
+  const plan = buildManualSalesJournal({
+    gross,
+    discount: Number(input.discount ?? 0),
+    tax: Number(input.salesTax ?? 0),
+    paymentType: input.paymentType,
+  });
+
+  return withTransaction(async (client) => {
+    const customerId = await partyIdByCode(client, input.customerCode);
+    const customerName = (
+      await client.query("SELECT party_name FROM master.parties WHERE id = $1", [customerId])
+    ).rows[0].party_name as string;
+    const invoiceNumber = await nextSeriesNumber(client, "MS");
+    const narration = (input.narration ?? "").trim() || null;
+
+    const invoiceRes = await client.query(
+      `INSERT INTO sales.manual_invoices
+         (invoice_number, customer_id, invoice_date, payment_type,
+          gross_amount, discount_amount, tax_amount, net_amount, narration, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'POSTED')
+       RETURNING id`,
+      [
+        invoiceNumber,
+        customerId,
+        input.date,
+        input.paymentType.trim().toUpperCase(),
+        gross,
+        round2(Number(input.discount ?? 0)),
+        round2(Number(input.salesTax ?? 0)),
+        plan.net,
+        narration,
+      ],
+    );
+    const invoiceId = invoiceRes.rows[0].id as string;
+
+    let lineNo = 0;
+    for (const line of prepared) {
+      lineNo += 1;
+      await client.query(
+        `INSERT INTO sales.manual_invoice_lines
+           (invoice_id, line_number, description, quantity, rate, amount)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [invoiceId, lineNo, line.description, line.quantity, line.rate, line.amount],
+      );
+    }
+
+    const memoFor = (role: string) => {
+      if (role === "discount") return `Discount on ${invoiceNumber}`;
+      if (role === "tax") return `Sales tax on ${invoiceNumber}`;
+      return invoiceNumber;
+    };
+    const journalEntryId = await postJournal(client, {
+      voucherType: "MANUAL_SALE",
+      referenceType: "MANUAL_SALE",
+      referenceId: invoiceId,
+      voucherDate: input.date,
+      description: narration
+        ? `Manual sales invoice ${invoiceNumber} — ${customerName}. ${narration}`
+        : `Manual sales invoice ${invoiceNumber} — ${customerName}`,
+      lines: plan.lines.map((l) => ({
+        accountCode: l.accountCode,
+        debit: l.debit,
+        credit: l.credit,
+        partyId: l.withCustomer ? customerId : null,
+        description: memoFor(l.role),
+      })),
+    });
+
+    await client.query(
+      "UPDATE sales.manual_invoices SET journal_entry_id = $2 WHERE id = $1",
+      [invoiceId, journalEntryId],
+    );
+
+    return {
+      invoiceId,
+      invoiceNumber,
+      grossAmount: gross,
+      discountAmount: round2(Number(input.discount ?? 0)),
+      taxAmount: round2(Number(input.salesTax ?? 0)),
+      netAmount: plan.net,
+      journalEntryId,
+    };
+  });
+}
+
+const MANUAL_INVOICE_SELECT = `
+  SELECT m.id, m.invoice_number, m.invoice_date::text, m.payment_type,
+         m.gross_amount::text, m.discount_amount::text, m.tax_amount::text, m.net_amount::text,
+         m.narration, m.status, m.journal_entry_id, je.voucher_number,
+         p.party_name AS customer_name, p.address AS customer_address, p.phone AS customer_phone
+  FROM sales.manual_invoices m
+  JOIN master.parties p ON p.id = m.customer_id
+  LEFT JOIN accounting.journal_entries je ON je.id = m.journal_entry_id
+`;
+
+export async function getManualInvoice(id: string): Promise<ManualInvoiceDocument | null> {
+  const headers = await query<Omit<ManualInvoiceDocument, "lines" | "treatment">>(
+    `${MANUAL_INVOICE_SELECT} WHERE m.id = $1`,
+    [id],
+  );
+  const header = headers[0];
+  if (!header) return null;
+  const [lines, treatment] = await Promise.all([
+    query<ManualInvoiceLine>(
+      `SELECT line_number, description, quantity::text, rate::text, amount::text
+       FROM sales.manual_invoice_lines
+       WHERE invoice_id = $1
+       ORDER BY line_number`,
+      [id],
+    ),
+    query<ManualInvoiceTreatment>(
+      `SELECT jl.line_number, a.account_code, a.account_name, p.party_name,
+              jl.debit::text, jl.credit::text, jl.description
+       FROM accounting.journal_lines jl
+       JOIN accounting.accounts a ON a.id = jl.account_id
+       LEFT JOIN master.parties p ON p.id = jl.party_id
+       WHERE jl.journal_entry_id = $1
+       ORDER BY jl.line_number`,
+      [header.journal_entry_id],
+    ),
+  ]);
+  return { ...header, lines, treatment };
+}
+
+export async function listManualInvoices(): Promise<ManualInvoiceSummary[]> {
+  return query<ManualInvoiceSummary>(
+    `SELECT m.id, m.invoice_number, m.invoice_date::text, m.payment_type, m.net_amount::text,
+            p.party_name AS customer_name, m.journal_entry_id, je.voucher_number
+     FROM sales.manual_invoices m
+     JOIN master.parties p ON p.id = m.customer_id
+     LEFT JOIN accounting.journal_entries je ON je.id = m.journal_entry_id
+     ORDER BY m.created_at DESC
+     LIMIT 100`,
   );
 }
 

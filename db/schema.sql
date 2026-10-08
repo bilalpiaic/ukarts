@@ -159,6 +159,35 @@ CREATE TABLE IF NOT EXISTS sales.dispatches (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- A manual sales bill is an accounting document. It does not dispatch stock
+-- and is not locked to a sale order. The journal is the financial treatment.
+CREATE TABLE IF NOT EXISTS sales.manual_invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR(100) NOT NULL UNIQUE,
+    customer_id UUID NOT NULL REFERENCES master.parties(id),
+    invoice_date DATE NOT NULL,
+    payment_type VARCHAR(20) NOT NULL CHECK (payment_type IN ('CASH', 'CREDIT', 'BANK')),
+    gross_amount NUMERIC(18,2) NOT NULL CHECK (gross_amount > 0),
+    discount_amount NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
+    tax_amount NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+    net_amount NUMERIC(18,2) NOT NULL CHECK (net_amount >= 0),
+    narration TEXT,
+    journal_entry_id UUID REFERENCES accounting.journal_entries(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'POSTED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sales.manual_invoice_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES sales.manual_invoices(id) ON DELETE CASCADE,
+    line_number INTEGER NOT NULL CHECK (line_number > 0),
+    description TEXT NOT NULL,
+    quantity NUMERIC(18,4) NOT NULL CHECK (quantity > 0),
+    rate NUMERIC(18,2) NOT NULL CHECK (rate >= 0),
+    amount NUMERIC(18,2) NOT NULL CHECK (amount >= 0),
+    UNIQUE (invoice_id, line_number)
+);
+
 -- ---------------------------------------------------------------------------
 -- Production
 -- ---------------------------------------------------------------------------
@@ -622,6 +651,8 @@ CREATE INDEX IF NOT EXISTS idx_journal_entries_voucher_type
     ON accounting.journal_entries(voucher_type);
 CREATE INDEX IF NOT EXISTS idx_dispatches_sale_order
     ON sales.dispatches(sale_order_id);
+CREATE INDEX IF NOT EXISTS idx_manual_invoices_customer
+    ON sales.manual_invoices(customer_id);
 
 -- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
 CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (

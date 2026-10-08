@@ -54,7 +54,7 @@ a single transaction with a balanced journal and inventory-ledger movements:
   bill (`Dr Processing Cost / Cr Processor Payable`, net of recovery).
 - **Stitching & finished goods** — issue processed cloth to stitcher; stitching
   production receipt (finished goods into inventory); stitching bill.
-- **Sales** — dispatch finished goods with cash or credit revenue postings, and print a Delivery Order, Customer Sales Invoice, and the sales voucher.
+- **Sales** — dispatch finished goods with cash or credit revenue postings, and print a Delivery Order, Customer Sales Invoice, and the sales voucher. A separate manual sales invoice posts the bill to Cash, Bank, or Accounts Receivable, Sales Income, Discount Allowed, and Sales Tax Payable, and prints with that accounting treatment.
 - **Reports** — trial balance with control/sub-ledger composition (customers
   under AR, vendors under Supplier Payable, processors under Processor Payable),
   inventory by stage, production costing, profitability, and KPI dashboard.
@@ -120,6 +120,7 @@ production; a development fallback is used when it is unset.
 - Control / sub ledgers: customers compose AR, vendors compose Supplier Payable, processors compose Processor Payable
 - Print buttons on all forms and reports
 - Delivery Order (`DO-000001`), Customer Sales Invoice (`SI-000001`), and voucher stationery from Sales & Dispatch
+- Manual sales invoice (`MS-000001`) with a print form that shows the posted debit and credit accounts
 - Document attachments (CSV, Word, Excel, PDF, JPG, PNG, MP3) on bills, sale orders, production orders, and vouchers, with instant in-form preview
 - Odoo / QuickBooks-style workspace: dark sidebar, module groups, tabbed pages
 - Typed vouchers (Easy-Books): CR cash receipt, CP cash payment, BR bank receipt, BP bank payment, JV journal — per-type numbering (`CR-000001`)

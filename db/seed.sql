@@ -36,13 +36,15 @@ INSERT INTO accounting.accounts (account_code, account_name, account_type, cash_
     ('2000', 'Supplier Payable',       'LIABILITY', NULL),
     ('2100', 'Processor Payable',      'LIABILITY', NULL),
     ('2200', 'Stitcher Payable',       'LIABILITY', NULL),
+    ('2300', 'Sales Tax Payable',      'LIABILITY', NULL),
     ('3000', 'Owner Investment',       'EQUITY', NULL),
     ('4000', 'Sales Income',           'INCOME', NULL),
     ('5000', 'Grey Consumption',       'EXPENSE', NULL),
     ('5100', 'Processing / Production Cost', 'EXPENSE', NULL),
     ('5200', 'Normal Loss',            'EXPENSE', NULL),
     ('5300', 'Abnormal Loss',          'EXPENSE', NULL),
-    ('5400', 'Stitching Cost',         'EXPENSE', NULL)
+    ('5400', 'Stitching Cost',         'EXPENSE', NULL),
+    ('5500', 'Discount Allowed',       'EXPENSE', NULL)
 ON CONFLICT (account_code) DO NOTHING;
 
 -- Existing databases: split the old combined Cash / Bank head so CR/CP vs BR/BP work.
@@ -145,6 +147,8 @@ BEGIN
     inventory.grey_lots,
     inventory.grey_purchase_lines,
     inventory.grey_purchases,
+    sales.manual_invoice_lines,
+    sales.manual_invoices,
     sales.dispatches,
     sales.sale_order_items,
     sales.sale_orders,

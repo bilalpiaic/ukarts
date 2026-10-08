@@ -63,6 +63,7 @@ export function ActionForm({
   submitLabel,
   fields,
   successText,
+  hint,
   apiBase = "/api/action",
 }: {
   action: string;
@@ -70,6 +71,7 @@ export function ActionForm({
   submitLabel: string;
   fields: Field[];
   successText?: string;
+  hint?: string;
   apiBase?: string;
 }) {
   const router = useRouter();
@@ -131,6 +133,7 @@ export function ActionForm({
   return (
     <form onSubmit={submit}>
       <h2>{title}</h2>
+      {hint ? <p className="subtitle">{hint}</p> : null}
       {fields.map((f) => (
         <div className="form-row" key={f.name}>
           <label>{f.label}</label>

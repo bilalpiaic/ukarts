@@ -1601,6 +1601,33 @@ tr.ledger-sub td:first-child {
   font-size: 13px;
 }
 
+.print-totals {
+  width: min(360px, 100%);
+  margin: 12px 0 0 auto;
+}
+
+.print-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.print-totals .grand {
+  font-weight: 700;
+  border-top: 2px solid var(--ink);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.print-treatment-title {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .print-sign {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
