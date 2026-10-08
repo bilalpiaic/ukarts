@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { MONEY_PICTURE, groupAmountInput, money, sanitizeAmountInput } from "@/lib/format";
 import { AttachmentField, uploadAttachments, usePendingFiles, type SavedFile } from "../attachments";
 import { Combobox, type Option } from "../combobox";
 
@@ -19,8 +20,58 @@ function blankLine(): VoucherLine {
   return { accountCode: "", partyCode: "", debit: "", credit: "", description: "" };
 }
 
-const money = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function seedAmount(v: string): string {
+  const n = Number(String(v).replace(/,/g, ""));
+  if (!v || !Number.isFinite(n) || n === 0) return "";
+  return n.toFixed(2);
+}
+
+function AmountInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (canonical: string) => void;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      spellCheck={false}
+      aria-label={label}
+      placeholder={MONEY_PICTURE}
+      value={groupAmountInput(value)}
+      onChange={(e) => {
+        const el = e.target;
+        const caret = el.selectionStart ?? el.value.length;
+        const digitsBefore = el.value.slice(0, caret).replace(/[^\d.]/g, "").length;
+        const next = sanitizeAmountInput(el.value);
+        onChange(next);
+        requestAnimationFrame(() => {
+          const shown = groupAmountInput(next);
+          let seen = 0;
+          let pos = shown.length;
+          for (let i = 0; i < shown.length; i++) {
+            if (/[\d.]/.test(shown[i])) seen += 1;
+            if (seen >= digitsBefore) {
+              pos = i + 1;
+              break;
+            }
+          }
+          el.setSelectionRange(pos, pos);
+        });
+      }}
+      onBlur={() => {
+        if (!value) return;
+        const n = Number(value);
+        if (Number.isFinite(n)) onChange(n.toFixed(2));
+      }}
+    />
+  );
+}
 
 /** Multi-line manual journal voucher entry (create or edit a draft). */
 export function VoucherForm({
@@ -47,7 +98,12 @@ export function VoucherForm({
   const [description, setDescription] = useState(existing?.description ?? "");
   const [lines, setLines] = useState<VoucherLine[]>(
     existing?.lines?.length
-      ? existing.lines.map((l) => ({ ...l, description: (l.description ?? "").slice(0, 25) }))
+      ? existing.lines.map((l) => ({
+          ...l,
+          description: (l.description ?? "").slice(0, 25),
+          debit: seedAmount(l.debit),
+          credit: seedAmount(l.credit),
+        }))
       : [blankLine(), blankLine()],
   );
   const [busy, setBusy] = useState(false);
@@ -177,19 +233,17 @@ export function VoucherForm({
                 />
               </td>
               <td className="num" data-label="Debit">
-                <input
-                  type="number"
-                  step="0.01"
+                <AmountInput
+                  label={`Line ${i + 1} debit`}
                   value={l.debit}
-                  onChange={(e) => setLine(i, "debit", e.target.value)}
+                  onChange={(v) => setLine(i, "debit", v)}
                 />
               </td>
               <td className="num" data-label="Credit">
-                <input
-                  type="number"
-                  step="0.01"
+                <AmountInput
+                  label={`Line ${i + 1} credit`}
                   value={l.credit}
-                  onChange={(e) => setLine(i, "credit", e.target.value)}
+                  onChange={(v) => setLine(i, "credit", v)}
                 />
               </td>
               <td data-label="">

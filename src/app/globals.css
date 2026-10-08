@@ -369,6 +369,7 @@ th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+  white-space: nowrap;
 }
 
 tfoot td {
@@ -886,8 +887,9 @@ tr.ledger-sub td:first-child {
   width: 100%;
 }
 
-.lines-table.voucher-lines {
-  min-width: 860px;
+.lines-table.voucher-lines,
+table.voucher-lines {
+  min-width: 980px;
 }
 
 .voucher-lines col.col-line {
@@ -902,8 +904,20 @@ tr.ledger-sub td:first-child {
   width: calc(25ch + 1.15rem);
 }
 
+/* Debit and Credit fit the money picture 000,000,000.00, including cell and input padding.
+   Account keeps whatever width is left. */
 .voucher-lines col.col-amt {
-  width: 6.75rem;
+  width: calc(14ch + 2.2rem);
+}
+
+.voucher-lines td.num input {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.voucher-lines td.num,
+.voucher-lines th.num {
+  white-space: nowrap;
 }
 
 .voucher-lines col.col-remove {
@@ -1132,6 +1146,9 @@ tr.ledger-sub td:first-child {
   .lines-table.voucher-lines {
     min-width: 0;
     table-layout: auto;
+  }
+  table.voucher-lines {
+    min-width: 980px;
   }
   th,
   td {
