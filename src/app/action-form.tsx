@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { money } from "@/lib/format";
 import { ACTION_ATTACH } from "@/lib/attachment-types";
 import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
@@ -46,9 +47,7 @@ function summarize(data: Record<string, unknown>): string {
   for (const s of SUMMARY_KEYS) {
     const v = data[s.key];
     if (v === undefined || v === null) continue;
-    const text = s.money
-      ? Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : String(v);
+    const text = s.money ? money(Number(v)) : String(v);
     parts.push(`${s.label} ${text}`);
   }
   return parts.length ? ` (${parts.join(", ")})` : "";
