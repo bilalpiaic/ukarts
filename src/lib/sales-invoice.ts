@@ -58,6 +58,39 @@ export function salesPaymentLabel(paymentType: string): string {
   return paymentType;
 }
 
+/** System-locked dispatch: Dr Cash or Accounts Receivable, Cr Sales Income. */
+export function buildDispatchSalesJournal(input: {
+  amount: number;
+  paymentType: string;
+}): { amount: number; lines: ManualSalesJournalLine[] } {
+  const payment = input.paymentType.trim().toUpperCase();
+  if (payment !== "CASH" && payment !== "CREDIT") {
+    throw new Error("Payment must be Cash or Credit.");
+  }
+  if (!Number.isFinite(input.amount)) throw new Error("Amount must be a number.");
+  const amount = round2(input.amount);
+  if (!(amount > 0)) throw new Error("Invoice total must be greater than zero.");
+  return {
+    amount,
+    lines: [
+      {
+        accountCode: payment === "CASH" ? SALES_ACCOUNTS.cash : SALES_ACCOUNTS.receivable,
+        debit: amount,
+        credit: 0,
+        withCustomer: payment === "CREDIT",
+        role: "settlement",
+      },
+      {
+        accountCode: SALES_ACCOUNTS.sales,
+        debit: 0,
+        credit: amount,
+        withCustomer: false,
+        role: "sales",
+      },
+    ],
+  };
+}
+
 export function buildManualSalesJournal(input: {
   gross: number;
   discount: number;

@@ -654,6 +654,54 @@ CREATE INDEX IF NOT EXISTS idx_dispatches_sale_order
 CREATE INDEX IF NOT EXISTS idx_manual_invoices_customer
     ON sales.manual_invoices(customer_id);
 
+-- Link a process dispatch to the finished-goods issue it posted, so an admin
+-- edit or delete can adjust that movement without touching other stock.
+ALTER TABLE sales.dispatches
+  ADD COLUMN IF NOT EXISTS inventory_transaction_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'dispatches_inventory_transaction_id_fkey'
+  ) THEN
+    ALTER TABLE sales.dispatches
+      ADD CONSTRAINT dispatches_inventory_transaction_id_fkey
+      FOREIGN KEY (inventory_transaction_id)
+      REFERENCES inventory.inventory_transactions(id);
+  END IF;
+END $$;
+
+-- Backfill only when one dispatch and one sale-dispatch movement match.
+WITH candidates AS (
+  SELECT d.id AS dispatch_id, it.id AS txn_id
+  FROM sales.dispatches d
+  JOIN inventory.inventory_transactions it
+    ON it.transaction_type = 'SALE_DISPATCH'
+   AND it.reference_type = 'SALE_ORDER'
+   AND it.reference_id = d.sale_order_id
+   AND it.transaction_date = d.dispatch_date
+  JOIN inventory.inventory_movements im
+    ON im.inventory_transaction_id = it.id
+   AND im.item_id = d.item_id
+   AND im.quantity = d.quantity
+   AND im.sale_order_id = d.sale_order_id
+  WHERE d.inventory_transaction_id IS NULL
+),
+unique_pairs AS (
+  SELECT dispatch_id, txn_id
+  FROM candidates
+  WHERE dispatch_id IN (
+    SELECT dispatch_id FROM candidates GROUP BY dispatch_id HAVING COUNT(*) = 1
+  )
+  AND txn_id IN (
+    SELECT txn_id FROM candidates GROUP BY txn_id HAVING COUNT(*) = 1
+  )
+)
+UPDATE sales.dispatches d
+SET inventory_transaction_id = u.txn_id
+FROM unique_pairs u
+WHERE d.id = u.dispatch_id;
+
 -- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
 CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (
     voucher_type VARCHAR(10) PRIMARY KEY,

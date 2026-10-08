@@ -2,16 +2,19 @@ import type { CustomerBalance, DispatchDocument, Organization } from "@/lib/erp"
 import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { CustomerClosingBalance } from "./customer-balance";
+import { InvoiceAdminActions } from "./invoice-admin-actions";
 import { DispatchPrintLinks } from "./print-links";
 
 export function CommercialSheet({
   org,
   doc,
   kind,
+  admin = false,
 }: {
   org: Organization | null;
   doc: DispatchDocument & CustomerBalance;
   kind: "do" | "invoice";
+  admin?: boolean;
 }) {
   const isInvoice = kind === "invoice";
   const title = isInvoice ? "CUSTOMER SALES INVOICE" : "DELIVERY ORDER";
@@ -24,6 +27,15 @@ export function CommercialSheet({
       <div className="print-toolbar no-print">
         <PrintButton label={isInvoice ? "Print Sales Invoice" : "Print Delivery Order"} />
         <DispatchPrintLinks dispatchId={doc.id} journalEntryId={doc.journal_entry_id} />
+        {admin ? (
+          <InvoiceAdminActions
+            editHref={`/sales/dispatches/${doc.id}/edit`}
+            endpoint="/api/admin/dispatch-sale-delete"
+            invoiceId={doc.id}
+            confirmText="Delete this sales invoice, its delivery order, and its voucher? Finished goods return to stock. This cannot be undone."
+            redirectTo="/sales"
+          />
+        ) : null}
       </div>
       <article className="print-sheet">
         <header className="print-sheet-org">

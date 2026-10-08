@@ -535,6 +535,20 @@ export async function deleteDocument(input: { docType: string; id: string }) {
 }
 
 // Lists for the admin document panel.
+/** Admin: remove a manual sales invoice together with its voucher. */
+export async function deleteManualSalesInvoice(input: { id: string }) {
+  const id = (input.id ?? "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error("Sales invoice not found.");
+  }
+  const rows = await query<{ id: string }>(
+    "SELECT id FROM sales.manual_invoices WHERE id=$1",
+    [id],
+  );
+  if (rows.length === 0) throw new Error("Sales invoice not found.");
+  return deleteDocument({ docType: "MANUAL_SALE", id });
+}
+
 export async function listGreyPurchases() {
   return query<{ id: string; purchase_number: string; supplier: string; total_amount: string; status: string }>(
     `SELECT gp.id, gp.purchase_number, p.party_name AS supplier, gp.total_amount::text, gp.status

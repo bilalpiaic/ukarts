@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getSession, isAdmin } from "@/lib/auth";
 import { getDispatch, getOrganization } from "@/lib/erp";
 import { CommercialSheet } from "../../../commercial-sheet";
 
@@ -10,7 +11,7 @@ export default async function DeliveryOrderPrint({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [doc, org] = await Promise.all([getDispatch(id), getOrganization()]);
+  const [doc, org, session] = await Promise.all([getDispatch(id), getOrganization(), getSession()]);
   if (!doc) notFound();
-  return <CommercialSheet org={org} doc={doc} kind="do" />;
+  return <CommercialSheet org={org} doc={doc} kind="do" admin={isAdmin(session)} />;
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import * as admin from "@/lib/admin";
+import { deleteDispatchSale, updateDispatchSale, updateManualSalesInvoice } from "@/lib/erp";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,31 @@ const handlers: Record<string, Handler> = {
   "journal-unpost": (b) => admin.unpostJournalEntry(b as never),
   "journal-delete": (b) => admin.deleteJournalEntry(b as never),
   "document-delete": (b) => admin.deleteDocument(b as never),
+  "manual-sales-update": (b) =>
+    updateManualSalesInvoice({
+      id: String(b.id ?? ""),
+      customerCode: String(b.customerCode ?? ""),
+      paymentType: String(b.paymentType ?? ""),
+      discount: Number(b.discount ?? 0),
+      salesTax: Number(b.salesTax ?? 0),
+      date: String(b.date ?? ""),
+      narration: typeof b.narration === "string" ? b.narration : "",
+      lines: Array.isArray(b.lines)
+        ? (b.lines as { description?: string; quantity?: number; rate?: number }[])
+        : [],
+    }),
+  "manual-sales-delete": (b) => admin.deleteManualSalesInvoice({ id: String(b.id ?? "") }),
+  "dispatch-sale-update": (b) =>
+    updateDispatchSale({
+      id: String(b.id ?? ""),
+      finishedItemCode: String(b.finishedItemCode ?? ""),
+      customerCode: String(b.customerCode ?? ""),
+      quantity: Number(b.quantity),
+      rate: Number(b.rate),
+      paymentType: String(b.paymentType ?? ""),
+      date: String(b.date ?? ""),
+    }),
+  "dispatch-sale-delete": (b) => deleteDispatchSale({ id: String(b.id ?? "") }),
 };
 
 export async function POST(

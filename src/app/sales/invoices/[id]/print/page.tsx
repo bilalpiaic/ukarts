@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getSession, isAdmin } from "@/lib/auth";
 import { getManualInvoice, getOrganization } from "@/lib/erp";
 import { ManualInvoiceSheet } from "../../../manual-invoice-sheet";
 
@@ -10,7 +11,7 @@ export default async function ManualSalesInvoicePrint({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [doc, org] = await Promise.all([getManualInvoice(id), getOrganization()]);
+  const [doc, org, session] = await Promise.all([getManualInvoice(id), getOrganization(), getSession()]);
   if (!doc) notFound();
-  return <ManualInvoiceSheet org={org} doc={doc} />;
+  return <ManualInvoiceSheet org={org} doc={doc} admin={isAdmin(session)} />;
 }

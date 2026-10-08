@@ -3,14 +3,17 @@ import { money, qty } from "@/lib/format";
 import { salesPaymentLabel } from "@/lib/sales-invoice";
 import { PrintButton } from "../print-button";
 import { CustomerClosingBalance } from "./customer-balance";
+import { InvoiceAdminActions } from "./invoice-admin-actions";
 import { ManualInvoicePrintLinks } from "./manual-print-links";
 
 export function ManualInvoiceSheet({
   org,
   doc,
+  admin = false,
 }: {
   org: Organization | null;
   doc: ManualInvoiceDocument & CustomerBalance;
+  admin?: boolean;
 }) {
   const currency = org?.currency ?? "PKR";
   const contact = [org?.phone, org?.email].filter(Boolean).join(" · ");
@@ -22,6 +25,15 @@ export function ManualInvoiceSheet({
       <div className="print-toolbar no-print">
         <PrintButton label="Print Sales Invoice" />
         <ManualInvoicePrintLinks invoiceId={doc.id} journalEntryId={doc.journal_entry_id} />
+        {admin ? (
+          <InvoiceAdminActions
+            editHref={`/sales/invoices/${doc.id}/edit`}
+            endpoint="/api/admin/manual-sales-delete"
+            invoiceId={doc.id}
+            confirmText="Delete this manual sales invoice and its voucher? This cannot be undone."
+            redirectTo="/sales"
+          />
+        ) : null}
       </div>
       <article className="print-sheet">
         <header className="print-sheet-org">

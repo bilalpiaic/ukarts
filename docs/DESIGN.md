@@ -1106,8 +1106,19 @@ without the workspace shell (`?plain=1`):
 
 The sales register and the post-sale confirmation offer Print DO, Print
 Invoice, and Print Voucher together. The voucher detail page links to the
-same stationery. Admin deletion of a sale order removes its dispatches before
-the journal, because the dispatch row references the journal entry.
+same stationery. Invoice numbers on the sales register and on the Reports
+sales-invoice register open the bill. Admin deletion of a sale order removes
+its dispatches before the journal, because the dispatch row references the
+journal entry.
+
+An administrator can edit or delete one dispatch from the register or from
+the bill. The delivery-order and invoice numbers stay the same. Edit rewrites
+the finished-goods issue on the linked inventory transaction and replaces the
+lines of the existing SALE voucher (same voucher number) so cash or accounts
+receivable and sales income match the new quantity, rate, item, customer,
+payment, and date. Delete removes that dispatch, its voucher, and its stock
+issue, and reopens the sale order when no dispatch remains. Other users do
+not see these actions, and the admin API rejects them.
 
 38.11 Manual sales invoice
 A manual sales bill is an accounting document. It does not require a sale
@@ -1124,3 +1135,14 @@ Accounts Receivable position: previous posted balance, this invoice (zero
 unless the bill is on credit), and the closing balance. Deleting a draft
 manual-sales voucher also deletes its invoice, so the invoice foreign key
 does not block the delete. Print route: `/sales/invoices/[id]/print`.
+
+An administrator can edit or delete a manual bill from the register or from
+the bill. The invoice number stays the same. Edit replaces the invoice lines
+and rewrites the existing MANUAL_SALE voucher so the settlement account,
+discount, sales income, and sales tax match the saved bill. Delete removes
+the invoice and that voucher together. The same admin-only rule applies as
+for a process dispatch.
+
+Reports include a Sales Invoices register for the selected dates. Each
+invoice number links to the customer bill, a process row also links its
+delivery order, and the voucher number links to the voucher.
