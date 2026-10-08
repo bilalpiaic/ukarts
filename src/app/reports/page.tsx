@@ -8,7 +8,7 @@ import {
   getProfitLoss,
   getTrialBalance,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDate, money, qty } from "@/lib/format";
 import { ControlLedgerComposition, TrialBalanceWithSubs } from "../control-ledgers";
 import { PrintHeader } from "../print-header";
 import { DateFilter } from "./date-filter";
@@ -33,7 +33,7 @@ export default async function Reports({
   ]);
 
   const periodText =
-    from || to ? `Period: ${from || "…"} to ${to || "…"}` : "All dates";
+    from || to ? `Period: ${formatDate(from) || "…"} to ${formatDate(to) || "…"}` : "All dates";
 
   const qsParams = new URLSearchParams();
   if (from) qsParams.set("from", from);
@@ -136,7 +136,7 @@ export default async function Reports({
                         {j.voucher_number}
                       </Link>
                     </td>
-                    <td>{j.voucher_date}</td>
+                    <td className="date">{formatDate(j.voucher_date)}</td>
                     <td>{j.voucher_type}</td>
                     <td>{j.description}</td>
                     <td className="num">{money(j.total)}</td>

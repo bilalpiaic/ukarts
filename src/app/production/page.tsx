@@ -9,7 +9,7 @@ import {
   getProductionOrders,
   getSaleOrders,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDate, money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 
@@ -109,7 +109,7 @@ export default async function Production() {
                 {saleOrders.map((s) => (
                   <tr key={s.id}>
                     <td>{s.so_number}</td>
-                    <td>{s.order_date}</td>
+                    <td className="date">{formatDate(s.order_date)}</td>
                     <td>{s.buyer}</td>
                     <td><span className="pill">{s.status}</span></td>
                     <td className="num">{money(s.amount)}</td>

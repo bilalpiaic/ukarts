@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAccountLedger, getControlLedgers, getOrganization } from "@/lib/erp";
-import { money } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
 import { ControlLedgerBlock } from "../../control-ledgers";
 import { PrintButton } from "../../print-button";
 import { PrintHeader } from "../../print-header";
@@ -81,7 +81,7 @@ export default async function AccountLedger({
                         {r.voucher_number}
                       </Link>
                     </td>
-                    <td>{r.voucher_date}</td>
+                    <td className="date">{formatDate(r.voucher_date)}</td>
                     <td>{r.party_name ?? "—"}</td>
                     <td>{r.description ?? "—"}</td>
                     <td className="num">{Number(r.debit) ? money(r.debit) : ""}</td>

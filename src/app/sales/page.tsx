@@ -7,7 +7,7 @@ import {
   getRecentJournalEntries,
   getSaleOrders,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDate, money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 
@@ -109,7 +109,7 @@ export default async function Sales() {
                         {j.voucher_number}
                       </Link>
                     </td>
-                    <td>{j.voucher_date}</td>
+                    <td className="date">{formatDate(j.voucher_date)}</td>
                     <td>{j.voucher_type}</td>
                     <td>{j.description}</td>
                     <td><span className="pill">{j.status}</span></td>

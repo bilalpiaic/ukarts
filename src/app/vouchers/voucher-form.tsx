@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { money, todayIso } from "@/lib/format";
 import { AttachmentField, uploadAttachments, usePendingFiles, type SavedFile } from "../attachments";
 import { Combobox, type Option } from "../combobox";
+import { DateInput } from "../date-input";
 
 export interface VoucherLine {
   accountCode: string;
@@ -13,14 +15,9 @@ export interface VoucherLine {
   description: string;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 function blankLine(): VoucherLine {
   return { accountCode: "", partyCode: "", debit: "", credit: "", description: "" };
 }
-
-const money = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Multi-line manual journal voucher entry (create or edit a draft). */
 export function VoucherForm({
@@ -43,7 +40,7 @@ export function VoucherForm({
   const router = useRouter();
   const pending = usePendingFiles();
   const [saved, setSaved] = useState<SavedFile[]>(existing?.attachments ?? []);
-  const [voucherDate, setVoucherDate] = useState(existing?.voucherDate ?? today());
+  const [voucherDate, setVoucherDate] = useState(existing?.voucherDate ?? todayIso());
   const [description, setDescription] = useState(existing?.description ?? "");
   const [lines, setLines] = useState<VoucherLine[]>(
     existing?.lines?.length
@@ -122,7 +119,7 @@ export function VoucherForm({
       <div className="header-fields">
         <div className="form-row">
           <label>Voucher date</label>
-          <input type="date" value={voucherDate} onChange={(e) => setVoucherDate(e.target.value)} />
+          <DateInput value={voucherDate} onChange={setVoucherDate} required ariaLabel="Voucher date" />
         </div>
         <div className="form-row">
           <label>Narration / description</label>
