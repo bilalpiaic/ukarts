@@ -492,6 +492,7 @@ export async function deleteDocument(input: { docType: string; id: string }) {
         break;
       }
       case "SALE_ORDER": {
+        await client.query("DELETE FROM sales.dispatches WHERE sale_order_id=$1", [input.id]);
         await deletePostings(client, "SALE_ORDER", input.id);
         await client.query("DELETE FROM inventory.grey_allocations WHERE sale_order_id=$1", [input.id]);
         await client.query("DELETE FROM sales.sale_order_items WHERE sale_order_id=$1", [input.id]);

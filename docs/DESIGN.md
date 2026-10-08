@@ -1092,3 +1092,19 @@ accounting.accounts.cash_bank, falling back to the account name/code
 and auto-post the cash/bank offset so the voucher always balances. Auto-
 generated operational vouchers (purchases, sales, processing, stitching)
 keep their source type on the register under the System filter.
+
+38.10 Sales documents (DO / customer invoice / voucher)
+Each dispatch writes one sales.dispatches row with a Delivery Order number
+(`DO-000001`) and a Customer Sales Invoice number (`SI-000001`), both taken
+from accounting.voucher_sequences. The row stores the customer, item, quantity,
+rate, amount, payment type, and the posted SALE journal. Print routes open
+without the workspace shell (`?plain=1`):
+
+- `/sales/dispatches/[id]/do` — Delivery Order
+- `/sales/dispatches/[id]/invoice` — Customer Sales Invoice
+- `/vouchers/[id]/print` — voucher stationery
+
+The sales register and the post-sale confirmation offer Print DO, Print
+Invoice, and Print Voucher together. The voucher detail page links to the
+same stationery. Admin deletion of a sale order removes its dispatches before
+the journal, because the dispatch row references the journal entry.
