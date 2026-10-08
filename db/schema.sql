@@ -140,6 +140,25 @@ CREATE TABLE IF NOT EXISTS sales.sale_order_items (
     amount NUMERIC(18,2)
 );
 
+-- One dispatch produces a Delivery Order and a Customer Sales Invoice,
+-- both tied to the posted sales voucher.
+CREATE TABLE IF NOT EXISTS sales.dispatches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    do_number VARCHAR(100) NOT NULL UNIQUE,
+    invoice_number VARCHAR(100) NOT NULL UNIQUE,
+    sale_order_id UUID NOT NULL REFERENCES sales.sale_orders(id),
+    customer_id UUID NOT NULL REFERENCES master.parties(id),
+    item_id UUID NOT NULL REFERENCES master.items(id),
+    dispatch_date DATE NOT NULL,
+    quantity NUMERIC(18,4) NOT NULL CHECK (quantity > 0),
+    rate NUMERIC(18,2) NOT NULL,
+    amount NUMERIC(18,2) NOT NULL,
+    payment_type VARCHAR(20) NOT NULL CHECK (payment_type IN ('CASH', 'CREDIT')),
+    journal_entry_id UUID REFERENCES accounting.journal_entries(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'POSTED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ---------------------------------------------------------------------------
 -- Production
 -- ---------------------------------------------------------------------------
@@ -601,6 +620,8 @@ CREATE INDEX IF NOT EXISTS idx_document_files_entity
     ON master.document_files(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_voucher_type
     ON accounting.journal_entries(voucher_type);
+CREATE INDEX IF NOT EXISTS idx_dispatches_sale_order
+    ON sales.dispatches(sale_order_id);
 
 -- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
 CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (

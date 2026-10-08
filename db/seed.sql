@@ -145,6 +145,7 @@ BEGIN
     inventory.grey_lots,
     inventory.grey_purchase_lines,
     inventory.grey_purchases,
+    sales.dispatches,
     sales.sale_order_items,
     sales.sale_orders,
     accounting.journal_lines,

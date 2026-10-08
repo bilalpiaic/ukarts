@@ -6,21 +6,24 @@ import {
   getPartiesByRole,
   getRecentJournalEntries,
   getSaleOrders,
+  listDispatches,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 import { displayVoucherType } from "@/lib/vouchers";
+import { DispatchPrintLinks } from "./print-links";
 
 export const dynamic = "force-dynamic";
 
 export default async function Sales() {
-  const [customers, finishedItems, saleOrders, stage, journals] = await Promise.all([
+  const [customers, finishedItems, saleOrders, stage, journals, dispatches] = await Promise.all([
     getPartiesByRole("CUSTOMER"),
     getItemsByType("FINISHED_GOOD"),
     getSaleOrders(),
     getInventoryByStage(),
     getRecentJournalEntries(),
+    listDispatches(),
   ]);
 
   const fgStock = stage.filter((s) => s.item_type === "FINISHED_GOOD");
@@ -29,7 +32,7 @@ export default async function Sales() {
   return (
     <div className="container">
       <PrintOrgHeader title="Sales & Dispatch" />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1 className="page-title">Sales &amp; Dispatch</h1>
         <PrintButton />
       </div>
@@ -79,6 +82,44 @@ export default async function Sales() {
                     <td>{r.location_name}</td>
                     <td>{r.item_name}</td>
                     <td className="num">{qty(r.stock)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card full">
+          <h2>Delivery Orders &amp; Sales Invoices</h2>
+          {dispatches.length === 0 ? (
+            <p className="subtitle">
+              No dispatches yet. Post a sale to print a delivery order, customer invoice, and voucher.
+            </p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>DO</th>
+                  <th>Invoice</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Item</th>
+                  <th className="num">Amount</th>
+                  <th className="no-print">Print</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dispatches.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.do_number}</td>
+                    <td>{d.invoice_number}</td>
+                    <td>{d.dispatch_date}</td>
+                    <td>{d.customer_name}</td>
+                    <td>{d.item_name}</td>
+                    <td className="num">{money(d.amount)}</td>
+                    <td className="no-print">
+                      <DispatchPrintLinks dispatchId={d.id} journalEntryId={d.journal_entry_id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

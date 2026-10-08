@@ -4,7 +4,6 @@ import {
   cashBankForType,
   expandCashBankLines,
   formModeForType,
-  formatVoucherNumber,
   isBankAccount,
   isCashAccount,
   isManualVoucherType,
@@ -46,18 +45,23 @@ function docNumber(prefix: string): string {
   return `${prefix}-${stamp}-${Date.now().toString().slice(-6)}`;
 }
 
-/** Next `{TYPE}-000001` number for a manual voucher series (Easy-Books style). */
-async function nextVoucherNumber(client: PoolClient, type: string): Promise<string> {
-  const vtype = isManualVoucherType(type) ? type : "JV";
+/** Next `{PREFIX}-000001` from the shared sequence table (vouchers, DO, invoices). */
+async function nextSeriesNumber(client: PoolClient, prefix: string): Promise<string> {
   const res = await client.query<{ seq: number }>(
     `INSERT INTO accounting.voucher_sequences (voucher_type, next_number)
      VALUES ($1, 2)
      ON CONFLICT (voucher_type) DO UPDATE
        SET next_number = accounting.voucher_sequences.next_number + 1
      RETURNING next_number - 1 AS seq`,
-    [vtype],
+    [prefix],
   );
-  return formatVoucherNumber(vtype, Number(res.rows[0].seq));
+  return `${prefix}-${String(Number(res.rows[0].seq)).padStart(6, "0")}`;
+}
+
+/** Next `{TYPE}-000001` number for a manual voucher series (Easy-Books style). */
+async function nextVoucherNumber(client: PoolClient, type: string): Promise<string> {
+  const vtype = isManualVoucherType(type) ? type : "JV";
+  return nextSeriesNumber(client, vtype);
 }
 
 async function assertTreasuryAccount(
@@ -1375,34 +1379,121 @@ export async function dispatchSale(input: {
       ],
     });
 
-    await postJournal(client, {
+    const doNumber = await nextSeriesNumber(client, "DO");
+    const invoiceNumber = await nextSeriesNumber(client, "SI");
+    const itemName = (
+      await client.query("SELECT item_name FROM master.items WHERE id = $1", [finishedItemId])
+    ).rows[0].item_name as string;
+
+    const dispatchRes = await client.query(
+      `INSERT INTO sales.dispatches
+         (do_number, invoice_number, sale_order_id, customer_id, item_id,
+          dispatch_date, quantity, rate, amount, payment_type, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'POSTED')
+       RETURNING id`,
+      [
+        doNumber,
+        invoiceNumber,
+        input.saleOrderId,
+        customerId,
+        finishedItemId,
+        input.date,
+        input.quantity,
+        input.rate,
+        amount,
+        input.paymentType,
+      ],
+    );
+    const dispatchId = dispatchRes.rows[0].id as string;
+
+    const journalEntryId = await postJournal(client, {
       voucherType: "SALE",
       referenceType: "SALE_ORDER",
       referenceId: input.saleOrderId,
       voucherDate: input.date,
-      description: `Sale of ${input.quantity} finished goods`,
+      description: `Sales invoice ${invoiceNumber} / ${doNumber} — ${itemName}`,
       lines: [
         {
           accountCode: input.paymentType === "CASH" ? "1000" : "1100",
           debit: amount,
           partyId: input.paymentType === "CREDIT" ? customerId : null,
           saleOrderId: input.saleOrderId,
+          description: invoiceNumber,
         },
         {
           accountCode: "4000",
           credit: amount,
           saleOrderId: input.saleOrderId,
+          description: invoiceNumber,
         },
       ],
     });
 
     await client.query(
+      "UPDATE sales.dispatches SET journal_entry_id = $2 WHERE id = $1",
+      [dispatchId, journalEntryId],
+    );
+    await client.query(
       "UPDATE sales.sale_orders SET status = 'CLOSED' WHERE id = $1",
       [input.saleOrderId],
     );
 
-    return { amount, saleOrderId: input.saleOrderId };
+    return {
+      amount,
+      saleOrderId: input.saleOrderId,
+      dispatchId,
+      doNumber,
+      invoiceNumber,
+      journalEntryId,
+    };
   });
+}
+
+export interface DispatchDocument {
+  id: string;
+  do_number: string;
+  invoice_number: string;
+  dispatch_date: string;
+  quantity: string;
+  rate: string;
+  amount: string;
+  payment_type: string;
+  status: string;
+  journal_entry_id: string | null;
+  voucher_number: string | null;
+  so_number: string;
+  customer_name: string;
+  customer_address: string | null;
+  customer_phone: string | null;
+  item_code: string;
+  item_name: string;
+  unit_name: string | null;
+}
+
+const DISPATCH_SELECT = `
+  SELECT d.id, d.do_number, d.invoice_number, d.dispatch_date::text,
+         d.quantity::text, d.rate::text, d.amount::text, d.payment_type, d.status,
+         d.journal_entry_id, je.voucher_number,
+         so.so_number,
+         p.party_name AS customer_name, p.address AS customer_address, p.phone AS customer_phone,
+         i.item_code, i.item_name, u.unit_name
+  FROM sales.dispatches d
+  JOIN sales.sale_orders so ON so.id = d.sale_order_id
+  JOIN master.parties p ON p.id = d.customer_id
+  JOIN master.items i ON i.id = d.item_id
+  LEFT JOIN master.units u ON u.id = i.unit_id
+  LEFT JOIN accounting.journal_entries je ON je.id = d.journal_entry_id
+`;
+
+export async function getDispatch(id: string): Promise<DispatchDocument | null> {
+  const rows = await query<DispatchDocument>(`${DISPATCH_SELECT} WHERE d.id = $1`, [id]);
+  return rows[0] ?? null;
+}
+
+export async function listDispatches(): Promise<DispatchDocument[]> {
+  return query<DispatchDocument>(
+    `${DISPATCH_SELECT} ORDER BY d.created_at DESC LIMIT 100`,
+  );
 }
 
 // ===========================================================================

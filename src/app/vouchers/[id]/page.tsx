@@ -43,6 +43,14 @@ export default async function VoucherDetail({
           <Link className="btn-ghost" href="/vouchers">
             ← Register
           </Link>
+          <a
+            className="btn-ghost"
+            href={`/vouchers/${h.id}/print?plain=1`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Print voucher
+          </a>
           <PrintButton />
         </div>
       </div>
