@@ -106,7 +106,6 @@ export function AppShell({
       />
       <div className="app-main">
         <div className="app-topbar no-print">
-          <div className="app-topbar-title">{labelFor(active, links)}</div>
           <div className="app-tabs">
             {tabs.map((t) => (
               <button

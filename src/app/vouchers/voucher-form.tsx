@@ -161,6 +161,13 @@ export function VoucherForm({
     setTreasuryAccountCode(opts[0]?.account_code ?? "");
   }
 
+  function withEmbed(path: string) {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1") {
+      return path.includes("?") ? `${path}&embed=1` : `${path}?embed=1`;
+    }
+    return path;
+  }
+
   async function submit(post: boolean) {
     setBusy(true);
     setMsg(null);
@@ -213,12 +220,12 @@ export function VoucherForm({
         pending.clear();
       }
       if (mode === "edit") {
-        router.push(`/vouchers/${existing?.id}`);
+        router.push(withEmbed(`/vouchers/${existing?.id}`));
         router.refresh();
         return;
       }
       if (data.journalEntryId) {
-        router.push(`/vouchers/${data.journalEntryId}`);
+        router.push(withEmbed(`/vouchers/${data.journalEntryId}`));
         router.refresh();
         return;
       }
