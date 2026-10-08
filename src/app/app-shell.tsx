@@ -104,17 +104,58 @@ export function AppShell({
         onOpen={openTab}
         onClose={closeTab}
       />
-      <div className="app-shell-body">
-        {tabs.map((t) => (
-          <iframe
-            key={t.key}
-            src={t.src}
-            title={t.label}
-            className="ws-frame"
-            style={{ display: t.key === active ? "block" : "none" }}
-          />
-        ))}
-        {tabs.length === 0 ? children : null}
+      <div className="app-main">
+        <div className="app-topbar no-print">
+          <div className="app-topbar-title">{labelFor(active, links)}</div>
+          <div className="app-tabs">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                className={`app-tab${t.key === active ? " active" : ""}`}
+                onClick={() => {
+                  setActive(t.key);
+                  window.history.replaceState(null, "", t.key);
+                }}
+              >
+                {t.label}
+                {tabs.length > 1 && (
+                  <span
+                    className="nav-link-close"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Close ${t.label}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(t.key);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeTab(t.key);
+                      }
+                    }}
+                  >
+                    ×
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="app-shell-body">
+          {tabs.map((t) => (
+            <iframe
+              key={t.key}
+              src={t.src}
+              title={t.label}
+              className="ws-frame"
+              style={{ display: t.key === active ? "block" : "none" }}
+            />
+          ))}
+          {tabs.length === 0 ? children : null}
+        </div>
       </div>
     </div>
   );
