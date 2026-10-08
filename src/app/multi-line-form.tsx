@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ACTION_ATTACH } from "@/lib/attachment-types";
+import { todayIso } from "@/lib/format";
 import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
+import { DateInput } from "./date-input";
 
 export interface HeaderField {
   name: string;
@@ -29,11 +31,9 @@ export interface LineColumn {
 type Row = Record<string, string>;
 type Msg = { kind: "ok" | "err"; text: string } | null;
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 function headerInitial(f: HeaderField): string {
   if (f.default !== undefined) return f.default;
-  if (f.type === "date") return today();
+  if (f.type === "date") return todayIso();
   if (f.type === "select") return f.options?.[0]?.value ?? "";
   return "";
 }
@@ -140,6 +140,13 @@ export function MultiLineForm({
               options={f.options ?? []}
               value={header[f.name]}
               onChange={(v) => setHeader((h) => ({ ...h, [f.name]: v }))}
+            />
+          ) : f.type === "date" ? (
+            <DateInput
+              value={header[f.name]}
+              onChange={(v) => setHeader((h) => ({ ...h, [f.name]: v }))}
+              required={f.required ?? true}
+              ariaLabel={f.label}
             />
           ) : (
             <input

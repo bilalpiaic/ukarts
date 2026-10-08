@@ -8,7 +8,7 @@ import {
   getGreyStock,
   getSuppliers,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDate, money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 
@@ -91,7 +91,7 @@ export default async function Purchasing() {
                 {purchases.map((p) => (
                   <tr key={p.id}>
                     <td>{p.purchase_number}</td>
-                    <td>{p.purchase_date}</td>
+                    <td className="date">{formatDate(p.purchase_date)}</td>
                     <td>{p.supplier}</td>
                     <td className="num">{money(p.total_amount)}</td>
                     <td>

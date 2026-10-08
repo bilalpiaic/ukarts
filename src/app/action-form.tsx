@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ACTION_ATTACH } from "@/lib/attachment-types";
+import { todayIso } from "@/lib/format";
 import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
+import { DateInput } from "./date-input";
 
 export interface Field {
   name: string;
@@ -19,11 +21,9 @@ export interface Field {
 
 type Msg = { kind: "ok" | "err"; text: string } | null;
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 function initialValue(f: Field): string {
   if (f.default !== undefined) return f.default;
-  if (f.type === "date") return today();
+  if (f.type === "date") return todayIso();
   if (f.type === "select") return f.options?.[0]?.value ?? "";
   return "";
 }
@@ -142,6 +142,13 @@ export function ActionForm({
               onChange={(e) => set(f.name, e.target.value)}
               required={f.required ?? true}
               rows={f.rows ?? 5}
+            />
+          ) : f.type === "date" ? (
+            <DateInput
+              value={values[f.name]}
+              onChange={(v) => set(f.name, v)}
+              required={f.required ?? true}
+              ariaLabel={f.label}
             />
           ) : (
             <input

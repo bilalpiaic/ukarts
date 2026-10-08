@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAllParties, getJournalEntriesList, getPostableAccounts } from "@/lib/erp";
-import { money } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
 import { AttachmentChips } from "../attachments";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
@@ -58,7 +58,7 @@ export default async function Vouchers() {
                         {v.voucher_number}
                       </Link>
                     </td>
-                    <td>{v.voucher_date}</td>
+                    <td className="date">{formatDate(v.voucher_date)}</td>
                     <td>{v.voucher_type}</td>
                     <td>
                       <span className={`pill ${v.status.toLowerCase()}`}>{v.status}</span>

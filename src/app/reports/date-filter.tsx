@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { DateInput } from "../date-input";
 import { PrintButton } from "../print-button";
 
 export function DateFilter() {
@@ -27,11 +28,11 @@ export function DateFilter() {
     <div className="toolbar no-print">
       <div className="form-row">
         <label>From</label>
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <DateInput value={from} onChange={setFrom} ariaLabel="From date" />
       </div>
       <div className="form-row">
         <label>To</label>
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DateInput value={to} onChange={setTo} ariaLabel="To date" />
       </div>
       <button type="button" onClick={apply}>
         Apply

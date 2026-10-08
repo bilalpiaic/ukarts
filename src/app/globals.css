@@ -426,6 +426,41 @@ input:read-only {
   color: var(--ink-soft);
 }
 
+.date-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.date-field > .date-text {
+  padding-right: 2.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-field > .date-picker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.5rem;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.date-field > .date-picker::-webkit-datetime-edit,
+.date-field > .date-picker::-webkit-inner-spin-button {
+  display: none;
+}
+
+.date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .msg {
   margin-top: 10px;
   font-size: 13px;

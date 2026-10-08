@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
 import { listAttachments } from "@/lib/attachments";
 import { getJournalEntry, getOrganization } from "@/lib/erp";
-import { money } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
 import { AttachmentChips, SavedAttachmentList } from "../../attachments";
 import { PrintButton } from "../../print-button";
 import { PrintHeader } from "../../print-header";
@@ -54,7 +54,7 @@ export default async function VoucherDetail({
           </div>
           <div>
             <div className="k">Date</div>
-            <div className="v">{h.voucher_date}</div>
+            <div className="v date">{formatDate(h.voucher_date)}</div>
           </div>
           <div>
             <div className="k">Type</div>

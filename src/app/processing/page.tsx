@@ -10,7 +10,7 @@ import {
   getProductionOrders,
   getSaleOrders,
 } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDate, money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 
@@ -122,7 +122,7 @@ export default async function Processing() {
                 {bills.map((b) => (
                   <tr key={b.id}>
                     <td>{b.bill_number}</td>
-                    <td>{b.bill_date}</td>
+                    <td className="date">{formatDate(b.bill_date)}</td>
                     <td>{b.processor}</td>
                     <td className="num">{money(b.net_payable)}</td>
                     <td>
