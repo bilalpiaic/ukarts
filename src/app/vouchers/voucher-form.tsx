@@ -46,7 +46,9 @@ export function VoucherForm({
   const [voucherDate, setVoucherDate] = useState(existing?.voucherDate ?? today());
   const [description, setDescription] = useState(existing?.description ?? "");
   const [lines, setLines] = useState<VoucherLine[]>(
-    existing?.lines?.length ? existing.lines : [blankLine(), blankLine()],
+    existing?.lines?.length
+      ? existing.lines.map((l) => ({ ...l, description: (l.description ?? "").slice(0, 25) }))
+      : [blankLine(), blankLine()],
   );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -77,7 +79,7 @@ export function VoucherForm({
             partyCode: l.partyCode || null,
             debit: Number(l.debit) || 0,
             credit: Number(l.credit) || 0,
-            description: l.description || null,
+            description: (l.description || "").trim().slice(0, 25) || null,
           })),
       };
       const action = mode === "edit" ? "journal-update" : "journal-create";
@@ -133,15 +135,25 @@ export function VoucherForm({
         </div>
       </div>
 
-      <table className="lines-table">
+      <table className="lines-table voucher-lines">
+        <colgroup>
+          <col className="col-line" />
+          <col className="col-account" />
+          <col className="col-party" />
+          <col className="col-desc" />
+          <col className="col-amt" />
+          <col className="col-amt" />
+          <col className="col-remove" />
+        </colgroup>
         <thead>
           <tr>
-            <th style={{ width: 26 }}>#</th>
+            <th>#</th>
             <th>Account</th>
             <th>Party (optional)</th>
-            <th className="num" style={{ width: 120 }}>Debit</th>
-            <th className="num" style={{ width: 120 }}>Credit</th>
-            <th style={{ width: 34 }}></th>
+            <th>Description</th>
+            <th className="num">Debit</th>
+            <th className="num">Credit</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -153,6 +165,16 @@ export function VoucherForm({
               </td>
               <td data-label="Party">
                 <Combobox options={parties} value={l.partyCode} onChange={(v) => setLine(i, "partyCode", v)} placeholder="—" />
+              </td>
+              <td data-label="Description">
+                <input
+                  type="text"
+                  maxLength={25}
+                  value={l.description}
+                  placeholder="Up to 25 characters"
+                  aria-label={`Line ${i + 1} description`}
+                  onChange={(e) => setLine(i, "description", e.target.value.slice(0, 25))}
+                />
               </td>
               <td className="num" data-label="Debit">
                 <input

@@ -70,10 +70,18 @@ export default async function VoucherDetail({
           </div>
         </div>
 
-        <table>
+        <table className="voucher-lines">
+          <colgroup>
+            <col className="col-line" />
+            <col className="col-account" />
+            <col className="col-party" />
+            <col className="col-desc" />
+            <col className="col-amt" />
+            <col className="col-amt" />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: 30 }}>#</th>
+              <th>#</th>
               <th>Account</th>
               <th>Party</th>
               <th>Description</th>
