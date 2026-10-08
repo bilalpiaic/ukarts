@@ -52,4 +52,13 @@ export DATABASE_URL="${DATABASE_URL:-postgres://ukarts:ukarts@localhost:5432/uka
 echo "==> Applying schema and seed…"
 npm run db:setup
 
-echo "==> start complete: PostgreSQL is up and the schema is applied."
+# Next.js comes up only after Postgres is ready, so the dev server does not
+# race the database. Hold it in the foreground. A rerun leaves an existing
+# listener alone.
+if (echo >/dev/tcp/127.0.0.1/3000) >/dev/null 2>&1; then
+  echo "==> Next.js already listening on port 3000."
+  exit 0
+fi
+
+echo "==> Starting Next.js dev server on http://0.0.0.0:3000…"
+exec npm run dev -- --hostname 0.0.0.0 --port 3000
