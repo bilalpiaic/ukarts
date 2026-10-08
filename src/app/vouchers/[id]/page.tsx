@@ -8,6 +8,7 @@ import { AttachmentChips, SavedAttachmentList } from "../../attachments";
 import { PrintButton } from "../../print-button";
 import { PrintHeader } from "../../print-header";
 import { VoucherActions } from "../voucher-actions";
+import { displayVoucherType } from "@/lib/vouchers";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,16 @@ export default async function VoucherDetail({
   if (!detail.header) notFound();
   const h = detail.header;
   const admin = isAdmin(session);
+  const vt = displayVoucherType(h.voucher_type);
 
   return (
     <div className="container">
-      <PrintHeader org={org} title={`Journal Voucher — ${h.voucher_number}`} />
+      <PrintHeader org={org} title={`${vt.label} — ${h.voucher_number}`} />
 
       <div className="page-head">
         <h1 className="page-title">
-          Voucher {h.voucher_number}{" "}
+          {vt.label} {h.voucher_number}{" "}
+          <span className={`vt-badge ${vt.className}`}>{vt.code}</span>{" "}
           <span className={`pill ${h.status.toLowerCase()}`}>{h.status}</span>
         </h1>
         <div className="row-actions no-print">
@@ -58,7 +61,9 @@ export default async function VoucherDetail({
           </div>
           <div>
             <div className="k">Type</div>
-            <div className="v">{h.voucher_type}</div>
+            <div className="v">
+              <span className={`vt-badge ${vt.className}`}>{vt.code}</span> {vt.label}
+            </div>
           </div>
           <div>
             <div className="k">Source</div>

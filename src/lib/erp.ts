@@ -1,5 +1,17 @@
 import type { PoolClient } from "pg";
 import { pool, query, withTransaction } from "./db";
+import {
+  cashBankForType,
+  expandCashBankLines,
+  formModeForType,
+  formatVoucherNumber,
+  isBankAccount,
+  isCashAccount,
+  isManualVoucherType,
+  normalizeManualVoucherType,
+  type FilterableAccount,
+  type ManualVoucherType,
+} from "./vouchers";
 
 /** Resolve the seeded admin user id (used as posted_by). */
 async function getAdminUserId(client: PoolClient): Promise<string> {
@@ -32,6 +44,49 @@ function docNumber(prefix: string): string {
     d.getDate(),
   ).padStart(2, "0")}`;
   return `${prefix}-${stamp}-${Date.now().toString().slice(-6)}`;
+}
+
+/** Next `{TYPE}-000001` number for a manual voucher series (Easy-Books style). */
+async function nextVoucherNumber(client: PoolClient, type: string): Promise<string> {
+  const vtype = isManualVoucherType(type) ? type : "JV";
+  const res = await client.query<{ seq: number }>(
+    `INSERT INTO accounting.voucher_sequences (voucher_type, next_number)
+     VALUES ($1, 2)
+     ON CONFLICT (voucher_type) DO UPDATE
+       SET next_number = accounting.voucher_sequences.next_number + 1
+     RETURNING next_number - 1 AS seq`,
+    [vtype],
+  );
+  return formatVoucherNumber(vtype, Number(res.rows[0].seq));
+}
+
+async function assertTreasuryAccount(
+  client: PoolClient,
+  voucherType: ManualVoucherType,
+  treasuryAccountCode: string | null | undefined,
+) {
+  const kind = cashBankForType(voucherType);
+  if (!kind) return;
+  if (!treasuryAccountCode) {
+    throw new Error(
+      kind === "cash"
+        ? "Select a Cash in Hand account."
+        : "Select a Bank account.",
+    );
+  }
+  const res = await client.query<FilterableAccount>(
+    `SELECT account_code, account_name, account_type, cash_bank
+     FROM accounting.accounts WHERE account_code = $1`,
+    [treasuryAccountCode],
+  );
+  const account = res.rows[0];
+  if (!account) throw new Error(`Account ${treasuryAccountCode} not found in chart of accounts.`);
+  if (kind === "cash" && !isCashAccount(account)) {
+    throw new Error("Cash Payment / Cash Receipt must use a Cash in Hand account.");
+  }
+  if (kind === "bank" && !isBankAccount(account)) {
+    throw new Error("Bank Payment / Bank Receipt must use a Bank account.");
+  }
 }
 
 /**
@@ -1938,11 +1993,12 @@ export interface AccountRow {
   account_type: string;
   is_postable: boolean;
   status: string;
+  cash_bank: string | null;
 }
 
 export async function listAccounts(): Promise<AccountRow[]> {
   return query<AccountRow>(
-    `SELECT id, account_code, account_name, account_type, is_postable, status
+    `SELECT id, account_code, account_name, account_type, is_postable, status, cash_bank
      FROM accounting.accounts
      ORDER BY account_code`,
   );
@@ -1950,8 +2006,8 @@ export async function listAccounts(): Promise<AccountRow[]> {
 
 /** Postable accounts, for the voucher line LOV. */
 export async function getPostableAccounts() {
-  return query<{ account_code: string; account_name: string; account_type: string }>(
-    `SELECT account_code, account_name, account_type
+  return query<FilterableAccount>(
+    `SELECT account_code, account_name, account_type, cash_bank
      FROM accounting.accounts
      WHERE is_postable = TRUE AND status = 'ACTIVE'
      ORDER BY account_code`,
@@ -1971,7 +2027,34 @@ export interface ManualJournalLineInput {
   partyCode?: string | null;
   debit?: number;
   credit?: number;
+  amount?: number;
   description?: string;
+}
+
+function linesForVoucherType(
+  voucherType: ManualVoucherType,
+  input: {
+    treasuryAccountCode?: string | null;
+    lines: ManualJournalLineInput[];
+  },
+): ManualJournalLineInput[] {
+  if (formModeForType(voucherType) === "journal") return input.lines;
+  return expandCashBankLines({
+    voucherType,
+    treasuryAccountCode: input.treasuryAccountCode ?? "",
+    lines: input.lines.map((l) => ({
+      accountCode: l.accountCode,
+      partyCode: l.partyCode,
+      amount: Number(l.amount ?? l.debit ?? l.credit ?? 0),
+      description: l.description,
+    })),
+  }).map((l) => ({
+    accountCode: l.accountCode,
+    partyCode: l.partyCode,
+    debit: l.debit,
+    credit: l.credit,
+    description: l.description ?? undefined,
+  }));
 }
 
 function normalizeManualLines(lines: ManualJournalLineInput[]) {
@@ -2027,15 +2110,25 @@ export async function createManualJournal(input: {
   voucherDate: string;
   description?: string;
   post?: boolean;
+  voucherType?: string;
+  treasuryAccountCode?: string | null;
   lines: ManualJournalLineInput[];
 }) {
-  const { clean, totalDebit } = normalizeManualLines(input.lines);
+  const voucherType = normalizeManualVoucherType(input.voucherType);
+  const { clean, totalDebit } = normalizeManualLines(linesForVoucherType(voucherType, input));
   return withTransaction(async (client) => {
+    await assertTreasuryAccount(client, voucherType, input.treasuryAccountCode);
+    const voucherNumber = await nextVoucherNumber(client, voucherType);
     const entryRes = await client.query(
       `INSERT INTO accounting.journal_entries
          (voucher_number, voucher_date, voucher_type, reference_type, description)
-       VALUES ($1, $2, 'MANUAL', 'MANUAL', $3) RETURNING id, voucher_number`,
-      [docNumber("JV"), input.voucherDate, input.description ?? "Manual journal voucher"],
+       VALUES ($1, $2, $3, 'MANUAL', $4) RETURNING id, voucher_number`,
+      [
+        voucherNumber,
+        input.voucherDate,
+        voucherType,
+        input.description ?? `${voucherType} voucher`,
+      ],
     );
     const entryId = entryRes.rows[0].id as string;
     await insertManualLines(client, entryId, clean);
@@ -2046,6 +2139,7 @@ export async function createManualJournal(input: {
     return {
       journalEntryId: entryId,
       voucherNumber: entryRes.rows[0].voucher_number as string,
+      voucherType,
       status: input.post ? "POSTED" : "DRAFT",
       amount: totalDebit,
     };
@@ -2058,12 +2152,15 @@ export async function updateManualJournal(input: {
   voucherDate: string;
   description?: string;
   post?: boolean;
+  voucherType?: string;
+  treasuryAccountCode?: string | null;
   lines: ManualJournalLineInput[];
 }) {
-  const { clean, totalDebit } = normalizeManualLines(input.lines);
+  const voucherType = normalizeManualVoucherType(input.voucherType);
+  const { clean, totalDebit } = normalizeManualLines(linesForVoucherType(voucherType, input));
   return withTransaction(async (client) => {
     const cur = await client.query(
-      "SELECT status, reference_type FROM accounting.journal_entries WHERE id=$1",
+      "SELECT status, reference_type, voucher_type FROM accounting.journal_entries WHERE id=$1",
       [input.id],
     );
     if (cur.rows.length === 0) throw new Error("Voucher not found.");
@@ -2073,17 +2170,23 @@ export async function updateManualJournal(input: {
     if (cur.rows[0].reference_type !== "MANUAL") {
       throw new Error("Only manual vouchers can be edited here; this one was generated by a transaction.");
     }
+    await assertTreasuryAccount(client, voucherType, input.treasuryAccountCode);
     await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);
     await client.query(
-      "UPDATE accounting.journal_entries SET voucher_date=$2, description=$3 WHERE id=$1",
-      [input.id, input.voucherDate, input.description ?? "Manual journal voucher"],
+      "UPDATE accounting.journal_entries SET voucher_date=$2, description=$3, voucher_type=$4 WHERE id=$1",
+      [input.id, input.voucherDate, input.description ?? `${voucherType} voucher`, voucherType],
     );
     await insertManualLines(client, input.id, clean);
     if (input.post) {
       const adminId = await getAdminUserId(client);
       await client.query("SELECT accounting.post_journal_entry($1, $2)", [input.id, adminId]);
     }
-    return { journalEntryId: input.id, status: input.post ? "POSTED" : "DRAFT", amount: totalDebit };
+    return {
+      journalEntryId: input.id,
+      status: input.post ? "POSTED" : "DRAFT",
+      amount: totalDebit,
+      voucherType,
+    };
   });
 }
 
@@ -2156,12 +2259,28 @@ export async function getJournalEntry(id: string): Promise<JournalDetail> {
     totalDebit,
     totalCredit,
     editable:
-      !!header && header.status === "DRAFT" && header.reference_type === "MANUAL",
+      !!header &&
+      header.status === "DRAFT" &&
+      header.reference_type === "MANUAL",
   };
 }
 
-export async function getJournalEntriesList(range?: DateRange) {
+export async function getJournalEntriesList(
+  range?: DateRange,
+  voucherType?: string,
+) {
   const dc = dateClause(range, 1);
+  const params = [...dc.params];
+  let typeSql = "";
+  const filter = (voucherType ?? "").trim().toUpperCase();
+  if (filter === "JV") {
+    typeSql = ` AND je.voucher_type IN ('JV', 'MANUAL')`;
+  } else if (isManualVoucherType(filter)) {
+    params.push(filter);
+    typeSql = ` AND je.voucher_type = $${params.length}`;
+  } else if (filter === "SYSTEM") {
+    typeSql = ` AND je.voucher_type NOT IN ('JV', 'MANUAL', 'CR', 'CP', 'BR', 'BP')`;
+  }
   return query<{
     id: string;
     voucher_number: string;
@@ -2179,11 +2298,11 @@ export async function getJournalEntriesList(range?: DateRange) {
               WHERE df.entity_type = 'JOURNAL' AND df.entity_id = je.id) AS attach_count
      FROM accounting.journal_entries je
      LEFT JOIN accounting.journal_lines jl ON jl.journal_entry_id = je.id
-     WHERE TRUE${dc.sql}
+     WHERE TRUE${dc.sql}${typeSql}
      GROUP BY je.id
      ORDER BY je.created_at DESC
      LIMIT 200`,
-    dc.params,
+    params,
   );
 }
 

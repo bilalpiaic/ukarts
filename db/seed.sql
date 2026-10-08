@@ -26,23 +26,36 @@ SET about = 'U.K Arts is a textile and garment house devoted to the craft of clo
 WHERE about IS NULL;
 
 -- Chart of accounts (codes referenced by the automatic posting rules in the SDD)
-INSERT INTO accounting.accounts (account_code, account_name, account_type) VALUES
-    ('1000', 'Cash / Bank',            'ASSET'),
-    ('1100', 'Accounts Receivable',    'ASSET'),
-    ('1200', 'Grey Inventory',         'ASSET'),
-    ('1300', 'Processed Cloth',        'ASSET'),
-    ('1400', 'Finished Goods',         'ASSET'),
-    ('2000', 'Supplier Payable',       'LIABILITY'),
-    ('2100', 'Processor Payable',      'LIABILITY'),
-    ('2200', 'Stitcher Payable',       'LIABILITY'),
-    ('3000', 'Owner Investment',       'EQUITY'),
-    ('4000', 'Sales Income',           'INCOME'),
-    ('5000', 'Grey Consumption',       'EXPENSE'),
-    ('5100', 'Processing / Production Cost', 'EXPENSE'),
-    ('5200', 'Normal Loss',            'EXPENSE'),
-    ('5300', 'Abnormal Loss',          'EXPENSE'),
-    ('5400', 'Stitching Cost',         'EXPENSE')
+INSERT INTO accounting.accounts (account_code, account_name, account_type, cash_bank) VALUES
+    ('1000', 'Cash in Hand',           'ASSET', 'CASH'),
+    ('1100', 'Accounts Receivable',    'ASSET', NULL),
+    ('1200', 'Grey Inventory',         'ASSET', NULL),
+    ('1300', 'Processed Cloth',        'ASSET', NULL),
+    ('1400', 'Finished Goods',         'ASSET', NULL),
+    ('1500', 'Bank',                   'ASSET', 'BANK'),
+    ('2000', 'Supplier Payable',       'LIABILITY', NULL),
+    ('2100', 'Processor Payable',      'LIABILITY', NULL),
+    ('2200', 'Stitcher Payable',       'LIABILITY', NULL),
+    ('3000', 'Owner Investment',       'EQUITY', NULL),
+    ('4000', 'Sales Income',           'INCOME', NULL),
+    ('5000', 'Grey Consumption',       'EXPENSE', NULL),
+    ('5100', 'Processing / Production Cost', 'EXPENSE', NULL),
+    ('5200', 'Normal Loss',            'EXPENSE', NULL),
+    ('5300', 'Abnormal Loss',          'EXPENSE', NULL),
+    ('5400', 'Stitching Cost',         'EXPENSE', NULL)
 ON CONFLICT (account_code) DO NOTHING;
+
+-- Existing databases: split the old combined Cash / Bank head so CR/CP vs BR/BP work.
+UPDATE accounting.accounts
+SET account_name = 'Cash in Hand', cash_bank = 'CASH'
+WHERE account_code = '1000';
+UPDATE accounting.accounts
+SET cash_bank = 'BANK'
+WHERE account_code = '1500';
+
+INSERT INTO accounting.voucher_sequences (voucher_type, next_number)
+SELECT t, 1 FROM unnest(ARRAY['JV','CR','CP','BR','BP']) AS t
+ON CONFLICT (voucher_type) DO NOTHING;
 
 -- Automatic journal rules (SDD section 20)
 INSERT INTO accounting.posting_rules (transaction_type, debit_account_code, credit_account_code, description) VALUES

@@ -12,6 +12,7 @@ import { money, qty } from "@/lib/format";
 import { ControlLedgerComposition, TrialBalanceWithSubs } from "../control-ledgers";
 import { PrintHeader } from "../print-header";
 import { DateFilter } from "./date-filter";
+import { displayVoucherType } from "@/lib/vouchers";
 
 export const dynamic = "force-dynamic";
 
@@ -137,7 +138,11 @@ export default async function Reports({
                       </Link>
                     </td>
                     <td>{j.voucher_date}</td>
-                    <td>{j.voucher_type}</td>
+                    <td>
+                      <span className={`vt-badge ${displayVoucherType(j.voucher_type).className}`}>
+                        {displayVoucherType(j.voucher_type).code}
+                      </span>
+                    </td>
                     <td>{j.description}</td>
                     <td className="num">{money(j.total)}</td>
                   </tr>

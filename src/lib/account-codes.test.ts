@@ -16,6 +16,7 @@ const SEEDED = [
   "1200",
   "1300",
   "1400",
+  "1500",
   "2000",
   "2100",
   "2200",
@@ -29,11 +30,12 @@ const SEEDED = [
 ];
 
 const SEEDED_ACCOUNTS = [
-  { account_code: "1000", account_name: "Cash / Bank", account_type: "ASSET" },
+  { account_code: "1000", account_name: "Cash in Hand", account_type: "ASSET" },
   { account_code: "1100", account_name: "Accounts Receivable", account_type: "ASSET" },
   { account_code: "1200", account_name: "Grey Inventory", account_type: "ASSET" },
   { account_code: "1300", account_name: "Processed Cloth", account_type: "ASSET" },
   { account_code: "1400", account_name: "Finished Goods", account_type: "ASSET" },
+  { account_code: "1500", account_name: "Bank", account_type: "ASSET" },
   { account_code: "2000", account_name: "Supplier Payable", account_type: "LIABILITY" },
   { account_code: "3000", account_name: "Owner Investment", account_type: "EQUITY" },
   { account_code: "4000", account_name: "Sales Income", account_type: "INCOME" },
@@ -68,7 +70,7 @@ describe("nextChildSerial", () => {
 
 describe("nextSeriesPoint", () => {
   it("opens the next unused xx00 in the type range", () => {
-    assert.equal(nextSeriesPoint(SEEDED, "ASSET"), "1500");
+    assert.equal(nextSeriesPoint(SEEDED, "ASSET"), "1600");
     assert.equal(nextSeriesPoint(SEEDED, "LIABILITY"), "2300");
     assert.equal(nextSeriesPoint(SEEDED, "EQUITY"), "3100");
     assert.equal(nextSeriesPoint(SEEDED, "INCOME"), "4100");
@@ -88,9 +90,9 @@ describe("allocateAccountCode", () => {
   });
 
   it("opens a new series when asked", () => {
-    assert.equal(allocateAccountCode(SEEDED, "ASSET", NEW_SERIES), "1500");
-    assert.equal(allocateAccountCode(SEEDED, "ASSET", ""), "1500");
-    assert.equal(allocateAccountCode(SEEDED, "ASSET", null), "1500");
+    assert.equal(allocateAccountCode(SEEDED, "ASSET", NEW_SERIES), "1600");
+    assert.equal(allocateAccountCode(SEEDED, "ASSET", ""), "1600");
+    assert.equal(allocateAccountCode(SEEDED, "ASSET", null), "1600");
   });
 
   it("rejects a serial point outside the type range", () => {
@@ -112,6 +114,6 @@ describe("serial option helpers", () => {
     assert.equal(options[0]?.value, "1000");
     assert.equal(options[0]?.nextCode, "1001");
     assert.equal(options.at(-1)?.value, NEW_SERIES);
-    assert.equal(options.at(-1)?.nextCode, "1500");
+    assert.equal(options.at(-1)?.nextCode, "1600");
   });
 });
