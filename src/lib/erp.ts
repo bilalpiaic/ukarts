@@ -1411,7 +1411,7 @@ export async function dispatchSale(input: {
       referenceType: "SALE_ORDER",
       referenceId: input.saleOrderId,
       voucherDate: input.date,
-      description: `Sales invoice ${invoiceNumber} / DO ${doNumber} — ${itemName}`,
+      description: `Sales invoice ${invoiceNumber} / ${doNumber} — ${itemName}`,
       lines: [
         {
           accountCode: input.paymentType === "CASH" ? "1000" : "1100",
