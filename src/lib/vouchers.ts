@@ -18,6 +18,8 @@ export const VOUCHER_TYPES: Record<string, string> = {
   CR: "Cash Receipt",
   BP: "Bank Payment",
   BR: "Bank Receipt",
+  SALE: "Sales Voucher",
+  MANUAL_SALE: "Manual Sales Invoice",
 };
 
 export const VOUCHER_TYPE_COLORS: Record<string, string> = {

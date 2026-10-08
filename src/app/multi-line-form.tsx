@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ACTION_ATTACH } from "@/lib/attachment-types";
 import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
+import { ManualInvoicePrintLinks } from "./sales/manual-print-links";
 
 export interface HeaderField {
   name: string;
@@ -27,7 +28,7 @@ export interface LineColumn {
 }
 
 type Row = Record<string, string>;
-type Msg = { kind: "ok" | "err"; text: string } | null;
+type Msg = { kind: "ok" | "err"; text: string; data?: Record<string, unknown> } | null;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -54,6 +55,7 @@ export function MultiLineForm({
   title,
   submitLabel,
   successText,
+  hint,
   headerFields,
   lineColumns,
   initialLines = 1,
@@ -63,6 +65,7 @@ export function MultiLineForm({
   title: string;
   submitLabel: string;
   successText?: string;
+  hint?: string;
   headerFields: HeaderField[];
   lineColumns: LineColumn[];
   initialLines?: number;
@@ -119,7 +122,18 @@ export function MultiLineForm({
         await uploadAttachments(attach.entityType, String(entityId), pending.files.map((f) => f.file));
         pending.clear();
       }
-      setMsg({ kind: "ok", text: successText ?? "Posted successfully." });
+      const extra: string[] = [];
+      if (typeof data.invoiceNumber === "string") extra.push(`invoice ${data.invoiceNumber}`);
+      if (typeof data.netAmount === "number") {
+        extra.push(
+          `net ${data.netAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        );
+      }
+      setMsg({
+        kind: "ok",
+        text: `${successText ?? "Posted successfully."}${extra.length ? ` (${extra.join(", ")})` : ""}`,
+        data,
+      });
       setLines(Array.from({ length: Math.max(1, initialLines) }, () => emptyRow(lineColumns)));
       router.refresh();
     } catch (err) {
@@ -132,6 +146,7 @@ export function MultiLineForm({
   return (
     <form onSubmit={submit}>
       <h2>{title}</h2>
+      {hint ? <p className="subtitle">{hint}</p> : null}
       {headerFields.map((f) => (
         <div className="form-row" key={f.name}>
           <label>{f.label}</label>
@@ -214,6 +229,16 @@ export function MultiLineForm({
         <AttachmentField files={pending.files} onAdd={pending.addFiles} onRemove={pending.remove} />
       )}
       {msg && <div className={`msg ${msg.kind}`}>{msg.text}</div>}
+      {msg?.kind === "ok" && typeof msg.data?.invoiceId === "string" ? (
+        <div className="print-result">
+          <ManualInvoicePrintLinks
+            invoiceId={msg.data.invoiceId}
+            journalEntryId={
+              typeof msg.data.journalEntryId === "string" ? msg.data.journalEntryId : null
+            }
+          />
+        </div>
+      ) : null}
     </form>
   );
 }

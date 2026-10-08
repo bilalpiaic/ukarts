@@ -22,6 +22,7 @@ const handlers: Record<string, Handler> = {
   "receive-stitching": (b) => erp.receiveStitching(b as never),
   "stitching-bill": (b) => erp.createStitchingBill(b as never),
   "dispatch-sale": (b) => erp.dispatchSale(b as never),
+  "manual-sales-invoice": (b) => erp.createManualSalesInvoice(b as never),
   "journal-create": (b) => erp.createManualJournal(b as never),
   "journal-update": (b) => erp.updateManualJournal(b as never),
   "journal-post": (b) => erp.postJournalEntry(b as never),

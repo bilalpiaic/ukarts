@@ -21,6 +21,7 @@ export async function middleware(req: NextRequest) {
 
   const embed =
     req.nextUrl.searchParams.get("embed") === "1" ||
+    req.nextUrl.searchParams.get("plain") === "1" ||
     req.headers.get("sec-fetch-dest") === "iframe";
   const requestHeaders = new Headers(req.headers);
   if (embed) requestHeaders.set("x-ukarts-embed", "1");

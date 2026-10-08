@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ACTION_ATTACH } from "@/lib/attachment-types";
 import { AttachmentField, uploadAttachments, usePendingFiles } from "./attachments";
 import { Combobox } from "./combobox";
+import { DispatchPrintLinks } from "./sales/print-links";
 
 export interface Field {
   name: string;
@@ -17,7 +18,7 @@ export interface Field {
   rows?: number;
 }
 
-type Msg = { kind: "ok" | "err"; text: string } | null;
+type Msg = { kind: "ok" | "err"; text: string; data?: Record<string, unknown> } | null;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -30,6 +31,8 @@ function initialValue(f: Field): string {
 
 const SUMMARY_KEYS: { key: string; label: string; money?: boolean }[] = [
   { key: "soNumber", label: "SO" },
+  { key: "doNumber", label: "delivery order" },
+  { key: "invoiceNumber", label: "invoice" },
   { key: "poNumber", label: "PO" },
   { key: "amount", label: "amount", money: true },
   { key: "issuedValue", label: "issued value", money: true },
@@ -60,6 +63,7 @@ export function ActionForm({
   submitLabel,
   fields,
   successText,
+  hint,
   apiBase = "/api/action",
 }: {
   action: string;
@@ -67,6 +71,7 @@ export function ActionForm({
   submitLabel: string;
   fields: Field[];
   successText?: string;
+  hint?: string;
   apiBase?: string;
 }) {
   const router = useRouter();
@@ -115,6 +120,7 @@ export function ActionForm({
       setMsg({
         kind: "ok",
         text: `${successText ?? "Posted successfully."}${summarize(data)}`,
+        data,
       });
       router.refresh();
     } catch (err) {
@@ -127,6 +133,7 @@ export function ActionForm({
   return (
     <form onSubmit={submit}>
       <h2>{title}</h2>
+      {hint ? <p className="subtitle">{hint}</p> : null}
       {fields.map((f) => (
         <div className="form-row" key={f.name}>
           <label>{f.label}</label>
@@ -162,6 +169,16 @@ export function ActionForm({
         {busy ? "Posting…" : submitLabel}
       </button>
       {msg && <div className={`msg ${msg.kind}`}>{msg.text}</div>}
+      {msg?.kind === "ok" && typeof msg.data?.dispatchId === "string" ? (
+        <div className="print-result">
+          <DispatchPrintLinks
+            dispatchId={msg.data.dispatchId}
+            journalEntryId={
+              typeof msg.data.journalEntryId === "string" ? msg.data.journalEntryId : null
+            }
+          />
+        </div>
+      ) : null}
     </form>
   );
 }

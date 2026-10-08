@@ -1092,3 +1092,38 @@ accounting.accounts.cash_bank, falling back to the account name/code
 and auto-post the cash/bank offset so the voucher always balances. Auto-
 generated operational vouchers (purchases, sales, processing, stitching)
 keep their source type on the register under the System filter.
+
+38.10 Sales documents (DO / customer invoice / voucher)
+Each dispatch writes one sales.dispatches row with a Delivery Order number
+(`DO-000001`) and a Customer Sales Invoice number (`SI-000001`), both taken
+from accounting.voucher_sequences. The row stores the customer, item, quantity,
+rate, amount, payment type, and the posted SALE journal. Print routes open
+without the workspace shell (`?plain=1`):
+
+- `/sales/dispatches/[id]/do` — Delivery Order
+- `/sales/dispatches/[id]/invoice` — Customer Sales Invoice
+- `/vouchers/[id]/print` — voucher stationery
+
+The sales register and the post-sale confirmation offer Print DO, Print
+Invoice, and Print Voucher together. The voucher detail page links to the
+same stationery. Admin deletion of a sale order removes its dispatches before
+the journal, because the dispatch row references the journal entry.
+
+38.11 Manual sales invoice
+A manual sales bill is an accounting document. It does not require a sale
+order and does not move finished-goods stock. The process dispatch in 38.10
+stays the stock-locked sale. Numbers use the `MS-000001` series.
+
+The printed bill shows the goods lines and the journal that was posted:
+
+| Amount            | Account                         | Side   |
+|-------------------|---------------------------------|--------|
+| Net receivable    | 1000 Cash, 1500 Bank, or 1100 AR| Debit  |
+| Discount, if any  | 5500 Discount Allowed           | Debit  |
+| Goods total       | 4000 Sales Income               | Credit |
+| Sales tax, if any | 2300 Sales Tax Payable          | Credit |
+
+Credit bills carry the customer on the Accounts Receivable sub-ledger.
+Cash and bank bills debit those asset accounts directly. Net receivable is
+gross − discount + tax, and the voucher always balances. Print route:
+`/sales/invoices/[id]/print`.
