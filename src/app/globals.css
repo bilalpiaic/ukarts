@@ -879,6 +879,42 @@ tr.ledger-sub td:first-child {
   font-variant-numeric: tabular-nums;
 }
 
+/* Journal voucher lines: description is a fixed 25-character column
+   between party and the amount columns. Account takes the leftover width. */
+.voucher-lines {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.lines-table.voucher-lines {
+  min-width: 860px;
+}
+
+.voucher-lines col.col-line {
+  width: 2.25rem;
+}
+
+.voucher-lines col.col-party {
+  width: 18%;
+}
+
+.voucher-lines col.col-desc {
+  width: calc(25ch + 1.15rem);
+}
+
+.voucher-lines col.col-amt {
+  width: 6.75rem;
+}
+
+.voucher-lines col.col-remove {
+  width: 2.5rem;
+}
+
+.voucher-lines th,
+.voucher-lines td {
+  vertical-align: middle;
+}
+
 .header-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
@@ -1092,8 +1128,10 @@ tr.ledger-sub td:first-child {
   table {
     font-size: 12px;
   }
-  .lines-table {
+  .lines-table,
+  .lines-table.voucher-lines {
     min-width: 0;
+    table-layout: auto;
   }
   th,
   td {

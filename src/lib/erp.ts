@@ -1981,7 +1981,7 @@ function normalizeManualLines(lines: ManualJournalLineInput[]) {
       partyCode: l.partyCode || null,
       debit: round2(Number(l.debit ?? 0)),
       credit: round2(Number(l.credit ?? 0)),
-      description: l.description || null,
+      description: (l.description ?? "").trim().slice(0, 25) || null,
     }))
     .filter((l) => l.accountCode && (l.debit > 0 || l.credit > 0));
 
