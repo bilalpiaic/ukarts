@@ -1870,15 +1870,27 @@ async function resolveDispatchInventoryTxn(
        AND NOT EXISTS (
          SELECT 1 FROM sales.dispatches d
          WHERE d.inventory_transaction_id = it.id AND d.id <> $5
-       )`,
+       )
+     ORDER BY it.posted_at NULLS LAST, it.id`,
     [row.sale_order_id, row.dispatch_date, row.item_id, row.quantity, row.id],
   );
-  if (found.rows.length !== 1) {
-    throw new Error(
-      "Could not match the finished-goods movement for this dispatch, so the bill cannot be changed.",
-    );
+  if (found.rows.length === 1) return found.rows[0].id;
+
+  const siblings = await client.query<{ id: string }>(
+    `SELECT id FROM sales.dispatches
+     WHERE sale_order_id = $1 AND item_id = $2 AND quantity = $3::numeric
+       AND dispatch_date = $4::date
+       AND (inventory_transaction_id IS NULL OR id = $5)
+     ORDER BY created_at, id`,
+    [row.sale_order_id, row.item_id, row.quantity, row.dispatch_date, row.id],
+  );
+  const index = siblings.rows.findIndex((sibling) => sibling.id === row.id);
+  if (found.rows.length > 1 && found.rows.length === siblings.rows.length && index >= 0) {
+    return found.rows[index].id;
   }
-  return found.rows[0].id;
+  throw new Error(
+    "Could not match the finished-goods movement for this dispatch, so the bill cannot be changed.",
+  );
 }
 
 /** Put the previous issue back, then post the replacement movement on the same transaction. */

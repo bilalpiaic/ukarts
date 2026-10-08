@@ -671,36 +671,58 @@ BEGIN
   END IF;
 END $$;
 
--- Backfill only when one dispatch and one sale-dispatch movement match.
-WITH candidates AS (
-  SELECT d.id AS dispatch_id, it.id AS txn_id
+-- Pair each dispatch with the stock issue of the same sale order, item,
+-- quantity, and date. When several match, keep creation order.
+WITH dispatch_keys AS (
+  SELECT d.id AS dispatch_id, d.sale_order_id, d.item_id, d.quantity,
+         d.dispatch_date, d.created_at
   FROM sales.dispatches d
-  JOIN inventory.inventory_transactions it
-    ON it.transaction_type = 'SALE_DISPATCH'
-   AND it.reference_type = 'SALE_ORDER'
-   AND it.reference_id = d.sale_order_id
-   AND it.transaction_date = d.dispatch_date
-  JOIN inventory.inventory_movements im
-    ON im.inventory_transaction_id = it.id
-   AND im.item_id = d.item_id
-   AND im.quantity = d.quantity
-   AND im.sale_order_id = d.sale_order_id
   WHERE d.inventory_transaction_id IS NULL
 ),
-unique_pairs AS (
-  SELECT dispatch_id, txn_id
-  FROM candidates
-  WHERE dispatch_id IN (
-    SELECT dispatch_id FROM candidates GROUP BY dispatch_id HAVING COUNT(*) = 1
-  )
-  AND txn_id IN (
-    SELECT txn_id FROM candidates GROUP BY txn_id HAVING COUNT(*) = 1
-  )
+txn_keys AS (
+  SELECT it.id AS txn_id, it.reference_id AS sale_order_id, im.item_id,
+         im.quantity, it.transaction_date AS dispatch_date, it.posted_at
+  FROM inventory.inventory_transactions it
+  JOIN inventory.inventory_movements im ON im.inventory_transaction_id = it.id
+  WHERE it.transaction_type = 'SALE_DISPATCH'
+    AND it.reference_type = 'SALE_ORDER'
+    AND NOT EXISTS (
+      SELECT 1 FROM sales.dispatches d WHERE d.inventory_transaction_id = it.id
+    )
+),
+ranked_d AS (
+  SELECT dispatch_id, sale_order_id, item_id, quantity, dispatch_date,
+         row_number() OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+           ORDER BY created_at, dispatch_id
+         ) AS n,
+         count(*) OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+         ) AS n_count
+  FROM dispatch_keys
+),
+ranked_t AS (
+  SELECT txn_id, sale_order_id, item_id, quantity, dispatch_date,
+         row_number() OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+           ORDER BY posted_at NULLS LAST, txn_id
+         ) AS n,
+         count(*) OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+         ) AS n_count
+  FROM txn_keys
 )
 UPDATE sales.dispatches d
-SET inventory_transaction_id = u.txn_id
-FROM unique_pairs u
-WHERE d.id = u.dispatch_id;
+SET inventory_transaction_id = t.txn_id
+FROM ranked_d rd
+JOIN ranked_t t
+  ON t.sale_order_id = rd.sale_order_id
+ AND t.item_id = rd.item_id
+ AND t.quantity = rd.quantity
+ AND t.dispatch_date = rd.dispatch_date
+ AND t.n = rd.n
+ AND t.n_count = rd.n_count
+WHERE d.id = rd.dispatch_id;
 
 -- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
 CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (
