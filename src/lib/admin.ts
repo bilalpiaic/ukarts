@@ -416,6 +416,16 @@ export async function deleteJournalEntry(input: { id: string }) {
       "DELETE FROM master.document_files WHERE entity_type='JOURNAL' AND entity_id=$1",
       [input.id],
     );
+    // The manual invoice row points at this voucher. Drop the bill with it,
+    // otherwise the foreign key blocks the delete.
+    await client.query(
+      "DELETE FROM sales.manual_invoices WHERE journal_entry_id=$1",
+      [input.id],
+    );
+    await client.query(
+      "UPDATE sales.dispatches SET journal_entry_id = NULL WHERE journal_entry_id=$1",
+      [input.id],
+    );
     await client.query("DELETE FROM accounting.journal_lines WHERE journal_entry_id=$1", [input.id]);
     await client.query("DELETE FROM accounting.journal_entries WHERE id=$1", [input.id]);
     return { ok: true };

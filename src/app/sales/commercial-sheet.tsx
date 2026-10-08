@@ -1,7 +1,7 @@
-import type { Organization } from "@/lib/erp";
-import type { DispatchDocument } from "@/lib/erp";
+import type { CustomerBalance, DispatchDocument, Organization } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
+import { CustomerClosingBalance } from "./customer-balance";
 import { DispatchPrintLinks } from "./print-links";
 
 export function CommercialSheet({
@@ -10,7 +10,7 @@ export function CommercialSheet({
   kind,
 }: {
   org: Organization | null;
-  doc: DispatchDocument;
+  doc: DispatchDocument & CustomerBalance;
   kind: "do" | "invoice";
 }) {
   const isInvoice = kind === "invoice";
@@ -100,8 +100,13 @@ export function CommercialSheet({
             </tfoot>
           ) : null}
         </table>
-        {isInvoice && doc.voucher_number ? (
-          <p className="print-voucher-ref">Accounting voucher: {doc.voucher_number}</p>
+        {isInvoice ? (
+          <CustomerClosingBalance
+            currency={currency}
+            previous={doc.previous_balance}
+            invoice={doc.invoice_balance}
+            closing={doc.closing_balance}
+          />
         ) : null}
         <div className="print-sign">
           <div>Prepared by</div>

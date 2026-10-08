@@ -1,7 +1,8 @@
-import type { ManualInvoiceDocument, Organization } from "@/lib/erp";
+import type { CustomerBalance, ManualInvoiceDocument, Organization } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
 import { salesPaymentLabel } from "@/lib/sales-invoice";
 import { PrintButton } from "../print-button";
+import { CustomerClosingBalance } from "./customer-balance";
 import { ManualInvoicePrintLinks } from "./manual-print-links";
 
 export function ManualInvoiceSheet({
@@ -9,7 +10,7 @@ export function ManualInvoiceSheet({
   doc,
 }: {
   org: Organization | null;
-  doc: ManualInvoiceDocument;
+  doc: ManualInvoiceDocument & CustomerBalance;
 }) {
   const currency = org?.currency ?? "PKR";
   const contact = [org?.phone, org?.email].filter(Boolean).join(" · ");
@@ -46,10 +47,6 @@ export function ManualInvoiceSheet({
           <div>
             <div className="k">Payment</div>
             <div className="v">{salesPaymentLabel(doc.payment_type)}</div>
-          </div>
-          <div>
-            <div className="k">Voucher</div>
-            <div className="v">{doc.voucher_number ?? "—"}</div>
           </div>
         </div>
         <div className="print-sheet-party">
@@ -103,31 +100,12 @@ export function ManualInvoiceSheet({
             <span>{money(doc.net_amount)}</span>
           </div>
         </div>
-        <h2 className="print-treatment-title">Accounting treatment</h2>
-        <table className="print-sheet-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Account</th>
-              <th>Party</th>
-              <th className="num">Debit</th>
-              <th className="num">Credit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {doc.treatment.map((line) => (
-              <tr key={line.line_number}>
-                <td>{line.line_number}</td>
-                <td>
-                  {line.account_code} — {line.account_name}
-                </td>
-                <td>{line.party_name ?? ""}</td>
-                <td className="num">{Number(line.debit) ? money(line.debit) : ""}</td>
-                <td className="num">{Number(line.credit) ? money(line.credit) : ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <CustomerClosingBalance
+          currency={currency}
+          previous={doc.previous_balance}
+          invoice={doc.invoice_balance}
+          closing={doc.closing_balance}
+        />
         <div className="print-sign">
           <div>Prepared by</div>
           <div>Customer acknowledgement</div>

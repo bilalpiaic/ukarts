@@ -1114,16 +1114,13 @@ A manual sales bill is an accounting document. It does not require a sale
 order and does not move finished-goods stock. The process dispatch in 38.10
 stays the stock-locked sale. Numbers use the `MS-000001` series.
 
-The printed bill shows the goods lines and the journal that was posted:
+The journal still posts that treatment, but the printed bill does not show
+the voucher lines. Credit bills carry the customer on the Accounts Receivable
+sub-ledger. Cash and bank bills debit those asset accounts directly. Net
+receivable is gross − discount + tax, and the voucher always balances.
 
-| Amount            | Account                         | Side   |
-|-------------------|---------------------------------|--------|
-| Net receivable    | 1000 Cash, 1500 Bank, or 1100 AR| Debit  |
-| Discount, if any  | 5500 Discount Allowed           | Debit  |
-| Goods total       | 4000 Sales Income               | Credit |
-| Sales tax, if any | 2300 Sales Tax Payable          | Credit |
-
-Credit bills carry the customer on the Accounts Receivable sub-ledger.
-Cash and bank bills debit those asset accounts directly. Net receivable is
-gross − discount + tax, and the voucher always balances. Print route:
-`/sales/invoices/[id]/print`.
+Both the manual bill and the process customer invoice end with the customer's
+Accounts Receivable position: previous posted balance, this invoice (zero
+unless the bill is on credit), and the closing balance. Deleting a draft
+manual-sales voucher also deletes its invoice, so the invoice foreign key
+does not block the delete. Print route: `/sales/invoices/[id]/print`.

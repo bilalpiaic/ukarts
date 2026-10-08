@@ -11,7 +11,13 @@ import {
   type FilterableAccount,
   type ManualVoucherType,
 } from "./vouchers";
-import { buildManualSalesJournal, type SalesPaymentType } from "./sales-invoice";
+import {
+  buildManualSalesJournal,
+  customerClosingBalance,
+  receivableOnInvoice,
+  SALES_ACCOUNTS,
+  type SalesPaymentType,
+} from "./sales-invoice";
 
 /** Resolve the seeded admin user id (used as posted_by). */
 async function getAdminUserId(client: PoolClient): Promise<string> {
@@ -1463,6 +1469,7 @@ export interface DispatchDocument {
   journal_entry_id: string | null;
   voucher_number: string | null;
   so_number: string;
+  customer_id: string;
   customer_name: string;
   customer_address: string | null;
   customer_phone: string | null;
@@ -1476,7 +1483,8 @@ const DISPATCH_SELECT = `
          d.quantity::text, d.rate::text, d.amount::text, d.payment_type, d.status,
          d.journal_entry_id, je.voucher_number,
          so.so_number,
-         p.party_name AS customer_name, p.address AS customer_address, p.phone AS customer_phone,
+         p.id AS customer_id, p.party_name AS customer_name,
+         p.address AS customer_address, p.phone AS customer_phone,
          i.item_code, i.item_name, u.unit_name
   FROM sales.dispatches d
   JOIN sales.sale_orders so ON so.id = d.sale_order_id
@@ -1486,9 +1494,61 @@ const DISPATCH_SELECT = `
   LEFT JOIN accounting.journal_entries je ON je.id = d.journal_entry_id
 `;
 
-export async function getDispatch(id: string): Promise<DispatchDocument | null> {
+export interface CustomerBalance {
+  previous_balance: string;
+  invoice_balance: string;
+  closing_balance: string;
+}
+
+/** Posted receivable before this bill, plus the bill itself when it is on credit. */
+async function customerAccountPosition(input: {
+  customerId: string;
+  invoiceDate: string;
+  journalEntryId: string | null;
+  paymentType: string;
+  net: number;
+}): Promise<CustomerBalance> {
+  const rows = await query<{ balance: string }>(
+    `SELECT COALESCE(SUM(jl.debit - jl.credit), 0)::text AS balance
+     FROM accounting.journal_lines jl
+     JOIN accounting.journal_entries je ON je.id = jl.journal_entry_id AND je.status = 'POSTED'
+     JOIN accounting.accounts a ON a.id = jl.account_id AND a.account_code = $4
+     WHERE jl.party_id = $1
+       AND ($2::uuid IS NULL OR je.id <> $2::uuid)
+       AND je.voucher_date <= $3::date
+       AND (
+         $2::uuid IS NULL
+         OR je.voucher_date < $3::date
+         OR (
+           je.voucher_date = $3::date
+           AND je.created_at <= (SELECT created_at FROM accounting.journal_entries WHERE id = $2::uuid)
+         )
+       )`,
+    [input.customerId, input.journalEntryId, input.invoiceDate, SALES_ACCOUNTS.receivable],
+  );
+  const position = customerClosingBalance(
+    Number(rows[0]?.balance ?? 0),
+    receivableOnInvoice(input.paymentType, input.net),
+  );
+  return {
+    previous_balance: position.previous.toFixed(2),
+    invoice_balance: position.invoice.toFixed(2),
+    closing_balance: position.closing.toFixed(2),
+  };
+}
+
+export async function getDispatch(id: string): Promise<(DispatchDocument & CustomerBalance) | null> {
   const rows = await query<DispatchDocument>(`${DISPATCH_SELECT} WHERE d.id = $1`, [id]);
-  return rows[0] ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  const balance = await customerAccountPosition({
+    customerId: row.customer_id,
+    invoiceDate: row.dispatch_date,
+    journalEntryId: row.journal_entry_id,
+    paymentType: row.payment_type,
+    net: Number(row.amount),
+  });
+  return { ...row, ...balance };
 }
 
 export async function listDispatches(): Promise<DispatchDocument[]> {
@@ -1505,16 +1565,6 @@ export interface ManualInvoiceLine {
   amount: string;
 }
 
-export interface ManualInvoiceTreatment {
-  line_number: number;
-  account_code: string;
-  account_name: string;
-  party_name: string | null;
-  debit: string;
-  credit: string;
-  description: string | null;
-}
-
 export interface ManualInvoiceDocument {
   id: string;
   invoice_number: string;
@@ -1528,11 +1578,11 @@ export interface ManualInvoiceDocument {
   status: string;
   journal_entry_id: string | null;
   voucher_number: string | null;
+  customer_id: string;
   customer_name: string;
   customer_address: string | null;
   customer_phone: string | null;
   lines: ManualInvoiceLine[];
-  treatment: ManualInvoiceTreatment[];
 }
 
 export interface ManualInvoiceSummary {
@@ -1669,20 +1719,23 @@ const MANUAL_INVOICE_SELECT = `
   SELECT m.id, m.invoice_number, m.invoice_date::text, m.payment_type,
          m.gross_amount::text, m.discount_amount::text, m.tax_amount::text, m.net_amount::text,
          m.narration, m.status, m.journal_entry_id, je.voucher_number,
-         p.party_name AS customer_name, p.address AS customer_address, p.phone AS customer_phone
+         p.id AS customer_id, p.party_name AS customer_name,
+         p.address AS customer_address, p.phone AS customer_phone
   FROM sales.manual_invoices m
   JOIN master.parties p ON p.id = m.customer_id
   LEFT JOIN accounting.journal_entries je ON je.id = m.journal_entry_id
 `;
 
-export async function getManualInvoice(id: string): Promise<ManualInvoiceDocument | null> {
-  const headers = await query<Omit<ManualInvoiceDocument, "lines" | "treatment">>(
+export async function getManualInvoice(
+  id: string,
+): Promise<(ManualInvoiceDocument & CustomerBalance) | null> {
+  const headers = await query<Omit<ManualInvoiceDocument, "lines">>(
     `${MANUAL_INVOICE_SELECT} WHERE m.id = $1`,
     [id],
   );
   const header = headers[0];
   if (!header) return null;
-  const [lines, treatment] = await Promise.all([
+  const [lines, balance] = await Promise.all([
     query<ManualInvoiceLine>(
       `SELECT line_number, description, quantity::text, rate::text, amount::text
        FROM sales.manual_invoice_lines
@@ -1690,18 +1743,15 @@ export async function getManualInvoice(id: string): Promise<ManualInvoiceDocumen
        ORDER BY line_number`,
       [id],
     ),
-    query<ManualInvoiceTreatment>(
-      `SELECT jl.line_number, a.account_code, a.account_name, p.party_name,
-              jl.debit::text, jl.credit::text, jl.description
-       FROM accounting.journal_lines jl
-       JOIN accounting.accounts a ON a.id = jl.account_id
-       LEFT JOIN master.parties p ON p.id = jl.party_id
-       WHERE jl.journal_entry_id = $1
-       ORDER BY jl.line_number`,
-      [header.journal_entry_id],
-    ),
+    customerAccountPosition({
+      customerId: header.customer_id,
+      invoiceDate: header.invoice_date,
+      journalEntryId: header.journal_entry_id,
+      paymentType: header.payment_type,
+      net: Number(header.net_amount),
+    }),
   ]);
-  return { ...header, lines, treatment };
+  return { ...header, lines, ...balance };
 }
 
 export async function listManualInvoices(): Promise<ManualInvoiceSummary[]> {

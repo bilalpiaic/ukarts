@@ -35,6 +35,22 @@ export interface ManualSalesJournalLine {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Amount this bill debits on the customer's Accounts Receivable sub-ledger. */
+export function receivableOnInvoice(paymentType: string, net: number): number {
+  return paymentType.trim().toUpperCase() === "CREDIT" ? round2(net) : 0;
+}
+
+/** Previous posted balance plus this bill's receivable is the closing balance. */
+export function customerClosingBalance(previous: number, thisReceivable: number): {
+  previous: number;
+  invoice: number;
+  closing: number;
+} {
+  const prev = round2(previous);
+  const bill = round2(thisReceivable);
+  return { previous: prev, invoice: bill, closing: round2(prev + bill) };
+}
+
 export function salesPaymentLabel(paymentType: string): string {
   if (paymentType === "CASH") return "Cash — Cash in Hand";
   if (paymentType === "BANK") return "Bank";

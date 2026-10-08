@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SALES_ACCOUNTS, buildManualSalesJournal } from "./sales-invoice.ts";
+import {
+  SALES_ACCOUNTS,
+  buildManualSalesJournal,
+  customerClosingBalance,
+  receivableOnInvoice,
+} from "./sales-invoice.ts";
 
 describe("buildManualSalesJournal", () => {
   it("debits Accounts Receivable and credits Sales Income on a credit bill", () => {
@@ -56,6 +61,16 @@ describe("buildManualSalesJournal", () => {
       journal.lines.map((l) => l.accountCode),
       [SALES_ACCOUNTS.discount, SALES_ACCOUNTS.sales],
     );
+  });
+
+  it("adds a credit bill to the customer's previous balance", () => {
+    assert.equal(receivableOnInvoice("CREDIT", 562500), 562500);
+    assert.equal(receivableOnInvoice("CASH", 1800), 0);
+    assert.deepEqual(customerClosingBalance(100000, 562500), {
+      previous: 100000,
+      invoice: 562500,
+      closing: 662500,
+    });
   });
 
   it("rejects a discount above the goods total", () => {
