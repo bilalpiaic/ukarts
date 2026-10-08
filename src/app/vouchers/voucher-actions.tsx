@@ -86,7 +86,10 @@ export function VoucherActions({
               run(async () => {
                 if (!window.confirm("Delete this unposted voucher permanently?")) return;
                 await post("/api/admin/journal-delete", { id });
-                router.push("/vouchers");
+                const embed =
+                  typeof window !== "undefined" &&
+                  new URLSearchParams(window.location.search).get("embed") === "1";
+                router.push(embed ? "/vouchers?embed=1" : "/vouchers");
                 router.refresh();
               })
             }

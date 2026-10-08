@@ -43,8 +43,11 @@ export default async function Overview() {
   return (
     <div className="container">
       <PrintOrgHeader title="Overview" />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 className="page-title">Overview</h1>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Overview</h1>
+          <p className="subtitle">Company snapshot — sales, cash position, and production.</p>
+        </div>
         <PrintButton label="Print Dashboard" />
       </div>
 

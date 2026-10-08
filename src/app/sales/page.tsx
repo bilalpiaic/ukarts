@@ -10,6 +10,7 @@ import {
 import { money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
+import { displayVoucherType } from "@/lib/vouchers";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function Sales() {
                 type: "select",
                 options: [
                   { value: "CREDIT", label: "On credit (Accounts Receivable)" },
-                  { value: "CASH", label: "Cash / Bank" },
+                  { value: "CASH", label: "Cash" },
                 ],
               },
               { name: "date", label: "Date", type: "date" },
@@ -110,7 +111,11 @@ export default async function Sales() {
                       </Link>
                     </td>
                     <td>{j.voucher_date}</td>
-                    <td>{j.voucher_type}</td>
+                    <td>
+                      <span className={`vt-badge ${displayVoucherType(j.voucher_type).className}`}>
+                        {displayVoucherType(j.voucher_type).code}
+                      </span>
+                    </td>
                     <td>{j.description}</td>
                     <td><span className="pill">{j.status}</span></td>
                     <td className="num">{money(j.total)}</td>

@@ -120,7 +120,9 @@ production; a development fallback is used when it is unset.
 - Control / sub ledgers: customers compose AR, vendors compose Supplier Payable, processors compose Processor Payable
 - Print buttons on all forms and reports
 - Document attachments (CSV, Word, Excel, PDF, JPG, PNG, MP3) on bills, sale orders, production orders, and vouchers, with instant in-form preview
-- Main-menu multi-tab: open several modules at once from the top nav
+- Odoo / QuickBooks-style workspace: dark sidebar, module groups, tabbed pages
+- Typed vouchers (Easy-Books): CR cash receipt, CP cash payment, BR bank receipt, BP bank payment, JV journal — per-type numbering (`CR-000001`)
+- Main-menu multi-tab: open several modules at once from the sidebar
 - Admin editing/deletion of master data and voiding of documents
 
 ### Using the Cloud Agent environment

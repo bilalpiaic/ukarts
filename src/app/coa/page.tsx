@@ -4,6 +4,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { listDesigns, listGreyPurchases, listItems, listParties } from "@/lib/admin";
 import { getControlLedgers, getJournalEntriesList, listAccounts } from "@/lib/erp";
 import { money } from "@/lib/format";
+import { displayVoucherType } from "@/lib/vouchers";
 import { AccountCreateForm } from "../account-create-form";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable, ActionButton, DeleteButton } from "../admin-controls";
@@ -217,7 +218,11 @@ export default async function COA() {
                       </Link>
                     </td>
                     <td>{v.voucher_date}</td>
-                    <td>{v.voucher_type}</td>
+                    <td>
+                      <span className={`vt-badge ${displayVoucherType(v.voucher_type).className}`}>
+                        {displayVoucherType(v.voucher_type).code}
+                      </span>
+                    </td>
                     <td><span className={`pill ${v.status.toLowerCase()}`}>{v.status}</span></td>
                     <td className="num">{money(v.total)}</td>
                     <td>

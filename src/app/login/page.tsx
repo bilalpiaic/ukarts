@@ -13,8 +13,8 @@ export default async function LoginPage({
       <div className="login-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="U.K Arts" className="login-logo" width={128} height={128} />
-        <div className="login-brand">U.K Arts ERP</div>
-        <p className="subtitle">Cloth · Craft · Passion</p>
+        <div className="login-brand">U.K Arts</div>
+        <p className="subtitle">Sign in to the accounting workspace</p>
         <LoginForm next={next ?? "/"} />
       </div>
     </div>

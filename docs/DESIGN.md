@@ -1066,3 +1066,29 @@ under the control on the trial balance, Overview, Reports, COA, and the account
 ledger; they do not add a second time into trial-balance totals. Each party
 ledger states which control it belongs to. Mapping lives in
 accounting.control_ledgers and is seeded with the standard COA.
+
+38.8 Presentation (Odoo / QuickBooks)
+The workspace uses a dark left sidebar with grouped modules (Home, Operations,
+Accounting, System), a light gray page, white cards, and QuickBooks-green
+primary actions. Open modules remain available as tabs in the top bar. Login
+and forms follow the same chrome so the app reads as a conventional SMB
+accounting product rather than a parchment ledger.
+
+38.9 Typed journal vouchers (CR / CP / BR / BP / JV)
+Manual entry follows the Easy-Books 3-mode voucher form:
+
+| Mode    | Prefix | Meaning                         |
+|---------|--------|---------------------------------|
+| Journal | JV     | General double-entry            |
+| Payment | CP     | Cash payment (credit Cash)      |
+| Payment | BP     | Bank payment (credit Bank)      |
+| Receipt | CR     | Cash receipt (debit Cash)       |
+| Receipt | BR     | Bank receipt (debit Bank)       |
+
+Numbers are per-type sequences (`CR-000001`, `CP-000001`, …) stored in
+accounting.voucher_sequences. Cash vs Bank is classified from
+accounting.accounts.cash_bank, falling back to the account name/code
+(1000 Cash in Hand, 1500 Bank). Payment/receipt modes collect contra lines
+and auto-post the cash/bank offset so the voucher always balances. Auto-
+generated operational vouchers (purchases, sales, processing, stitching)
+keep their source type on the register under the System filter.

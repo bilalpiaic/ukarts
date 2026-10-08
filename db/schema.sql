@@ -407,7 +407,8 @@ CREATE TABLE IF NOT EXISTS accounting.accounts (
     account_type VARCHAR(50) NOT NULL,
     parent_account_id UUID REFERENCES accounting.accounts(id),
     is_postable BOOLEAN DEFAULT TRUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    cash_bank VARCHAR(10) CHECK (cash_bank IS NULL OR cash_bank IN ('CASH', 'BANK'))
 );
 
 -- Control GL accounts whose balances are composed of party sub-ledgers
@@ -598,6 +599,25 @@ CREATE INDEX IF NOT EXISTS idx_journal_lines_party
     ON accounting.journal_lines(party_id);
 CREATE INDEX IF NOT EXISTS idx_document_files_entity
     ON master.document_files(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_journal_entries_voucher_type
+    ON accounting.journal_entries(voucher_type);
+
+-- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
+CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (
+    voucher_type VARCHAR(10) PRIMARY KEY,
+    next_number INTEGER NOT NULL DEFAULT 1
+);
 
 -- Additive columns for existing databases (CREATE TABLE IF NOT EXISTS will not alter them)
 ALTER TABLE master.organization ADD COLUMN IF NOT EXISTS about TEXT;
+ALTER TABLE accounting.accounts ADD COLUMN IF NOT EXISTS cash_bank VARCHAR(10);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_accounts_cash_bank'
+  ) THEN
+    ALTER TABLE accounting.accounts
+      ADD CONSTRAINT chk_accounts_cash_bank
+      CHECK (cash_bank IS NULL OR cash_bank IN ('CASH', 'BANK'));
+  END IF;
+END $$;

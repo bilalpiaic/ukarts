@@ -6,6 +6,7 @@ import {
   isAccountType,
 } from "./account-codes";
 import { query, withTransaction } from "./db";
+import { cashBankFromSerial } from "./vouchers";
 
 // ---------------------------------------------------------------------------
 // Organization
@@ -341,11 +342,12 @@ export async function createAccount(input: {
       serialBase,
     );
 
+    const cashBank = cashBankFromSerial(serialBase === NEW_SERIES ? accountCode : serialBase);
     const res = await client.query<{ id: string }>(
       `INSERT INTO accounting.accounts
-         (account_code, account_name, account_type, is_postable, parent_account_id)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [accountCode, input.account_name.trim(), type, postable, parentId],
+         (account_code, account_name, account_type, is_postable, parent_account_id, cash_bank)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [accountCode, input.account_name.trim(), type, postable, parentId, cashBank],
     );
     return { id: res.rows[0].id, account_code: accountCode };
   });
