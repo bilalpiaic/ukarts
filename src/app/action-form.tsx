@@ -31,7 +31,7 @@ function initialValue(f: Field): string {
 
 const SUMMARY_KEYS: { key: string; label: string; money?: boolean }[] = [
   { key: "soNumber", label: "SO" },
-  { key: "doNumber", label: "DO" },
+  { key: "doNumber", label: "delivery order" },
   { key: "invoiceNumber", label: "invoice" },
   { key: "poNumber", label: "PO" },
   { key: "amount", label: "amount", money: true },
