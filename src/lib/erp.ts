@@ -12,6 +12,7 @@ import {
   type ManualVoucherType,
 } from "./vouchers";
 import {
+  buildDispatchSalesJournal,
   buildManualSalesJournal,
   customerClosingBalance,
   receivableOnInvoice,
@@ -592,39 +593,49 @@ async function postInventory(
   const txnId = txnRes.rows[0].id as string;
 
   for (const m of opts.movements) {
-    if (m.fromLocationId) {
-      const stockRes = await client.query(
-        "SELECT inventory.get_location_stock($1, $2, $3) AS s",
-        [m.itemId, m.lotId ?? null, m.fromLocationId],
-      );
-      const available = Number(stockRes.rows[0].s);
-      if (available + 1e-9 < m.quantity) {
-        throw new Error(
-          `Insufficient stock to move ${m.quantity}; only ${available} available at source location.`,
-        );
-      }
-    }
-    await client.query(
-      `INSERT INTO inventory.inventory_movements
-         (inventory_transaction_id, movement_date, item_id, lot_id, from_location_id, to_location_id,
-          quantity, rate, value, sale_order_id, production_order_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [
-        txnId,
-        opts.date,
-        m.itemId,
-        m.lotId ?? null,
-        m.fromLocationId ?? null,
-        m.toLocationId ?? null,
-        m.quantity,
-        m.rate ?? null,
-        m.value ?? null,
-        m.saleOrderId ?? null,
-        m.productionOrderId ?? null,
-      ],
-    );
+    await insertStockMovement(client, txnId, opts.date, m);
   }
   return txnId;
+}
+
+/** Issue or receive one movement, refusing a source location that cannot cover it. */
+async function insertStockMovement(
+  client: PoolClient,
+  txnId: string,
+  date: string,
+  m: MovementInput,
+) {
+  if (m.fromLocationId) {
+    const stockRes = await client.query(
+      "SELECT inventory.get_location_stock($1, $2, $3) AS s",
+      [m.itemId, m.lotId ?? null, m.fromLocationId],
+    );
+    const available = Number(stockRes.rows[0].s);
+    if (available + 1e-9 < m.quantity) {
+      throw new Error(
+        `Insufficient stock to move ${m.quantity}; only ${available} available at source location.`,
+      );
+    }
+  }
+  await client.query(
+    `INSERT INTO inventory.inventory_movements
+       (inventory_transaction_id, movement_date, item_id, lot_id, from_location_id, to_location_id,
+        quantity, rate, value, sale_order_id, production_order_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [
+      txnId,
+      date,
+      m.itemId,
+      m.lotId ?? null,
+      m.fromLocationId ?? null,
+      m.toLocationId ?? null,
+      m.quantity,
+      m.rate ?? null,
+      m.value ?? null,
+      m.saleOrderId ?? null,
+      m.productionOrderId ?? null,
+    ],
+  );
 }
 
 async function addProductionCost(
@@ -1362,13 +1373,14 @@ export async function dispatchSale(input: {
   date: string;
 }) {
   if (!(input.quantity > 0)) throw new Error("Quantity must be greater than zero.");
+  const amount = round2(input.quantity * input.rate);
+  const plan = buildDispatchSalesJournal({ amount, paymentType: input.paymentType });
   return withTransaction(async (client) => {
     const customerId = await partyIdByCode(client, input.customerCode);
     const finishedItemId = await itemIdByCode(client, input.finishedItemCode);
     const finishedGoods = await locationIdByCode(client, "FINISHED_GOODS");
-    const amount = round2(input.quantity * input.rate);
 
-    await postInventory(client, {
+    const inventoryTransactionId = await postInventory(client, {
       transactionType: "SALE_DISPATCH",
       date: input.date,
       referenceType: "SALE_ORDER",
@@ -1395,8 +1407,9 @@ export async function dispatchSale(input: {
     const dispatchRes = await client.query(
       `INSERT INTO sales.dispatches
          (do_number, invoice_number, sale_order_id, customer_id, item_id,
-          dispatch_date, quantity, rate, amount, payment_type, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'POSTED')
+          dispatch_date, quantity, rate, amount, payment_type, status,
+          inventory_transaction_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'POSTED',$11)
        RETURNING id`,
       [
         doNumber,
@@ -1407,8 +1420,9 @@ export async function dispatchSale(input: {
         input.date,
         input.quantity,
         input.rate,
-        amount,
-        input.paymentType,
+        plan.amount,
+        input.paymentType.trim().toUpperCase(),
+        inventoryTransactionId,
       ],
     );
     const dispatchId = dispatchRes.rows[0].id as string;
@@ -1419,21 +1433,14 @@ export async function dispatchSale(input: {
       referenceId: input.saleOrderId,
       voucherDate: input.date,
       description: `Sales invoice ${invoiceNumber} / ${doNumber} — ${itemName}`,
-      lines: [
-        {
-          accountCode: input.paymentType === "CASH" ? "1000" : "1100",
-          debit: amount,
-          partyId: input.paymentType === "CREDIT" ? customerId : null,
-          saleOrderId: input.saleOrderId,
-          description: invoiceNumber,
-        },
-        {
-          accountCode: "4000",
-          credit: amount,
-          saleOrderId: input.saleOrderId,
-          description: invoiceNumber,
-        },
-      ],
+      lines: plan.lines.map((l) => ({
+        accountCode: l.accountCode,
+        debit: l.debit,
+        credit: l.credit,
+        partyId: l.withCustomer ? customerId : null,
+        saleOrderId: input.saleOrderId,
+        description: invoiceNumber,
+      })),
     });
 
     await client.query(
@@ -1446,7 +1453,7 @@ export async function dispatchSale(input: {
     );
 
     return {
-      amount,
+      amount: plan.amount,
       saleOrderId: input.saleOrderId,
       dispatchId,
       doNumber,
@@ -1468,8 +1475,10 @@ export interface DispatchDocument {
   status: string;
   journal_entry_id: string | null;
   voucher_number: string | null;
+  sale_order_id: string;
   so_number: string;
   customer_id: string;
+  customer_code: string;
   customer_name: string;
   customer_address: string | null;
   customer_phone: string | null;
@@ -1482,8 +1491,8 @@ const DISPATCH_SELECT = `
   SELECT d.id, d.do_number, d.invoice_number, d.dispatch_date::text,
          d.quantity::text, d.rate::text, d.amount::text, d.payment_type, d.status,
          d.journal_entry_id, je.voucher_number,
-         so.so_number,
-         p.id AS customer_id, p.party_name AS customer_name,
+         d.sale_order_id, so.so_number,
+         p.id AS customer_id, p.party_code AS customer_code, p.party_name AS customer_name,
          p.address AS customer_address, p.phone AS customer_phone,
          i.item_code, i.item_name, u.unit_name
   FROM sales.dispatches d
@@ -1579,6 +1588,7 @@ export interface ManualInvoiceDocument {
   journal_entry_id: string | null;
   voucher_number: string | null;
   customer_id: string;
+  customer_code: string;
   customer_name: string;
   customer_address: string | null;
   customer_phone: string | null;
@@ -1596,23 +1606,33 @@ export interface ManualInvoiceSummary {
   voucher_number: string | null;
 }
 
-/**
- * Manual sales invoice. Does not move stock and does not require a sale order.
- * The journal follows buildManualSalesJournal: settlement account, discount,
- * sales income, and sales tax payable.
- */
-export async function createManualSalesInvoice(input: {
-  customerCode: string;
-  paymentType: SalesPaymentType;
-  discount?: number;
-  salesTax?: number;
-  date: string;
-  narration?: string;
-  lines: { description?: string; quantity?: number; rate?: number }[];
-}) {
-  const prepared = (input.lines ?? [])
+function requireIsoDate(date: string): string {
+  const value = (date ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Enter a valid date.");
+  return value;
+}
+
+function requireDocumentId(id: string): string {
+  const value = (id ?? "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error("Sales invoice not found.");
+  }
+  return value;
+}
+
+interface PreparedManualLine {
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
+function prepareManualInvoiceLines(
+  lines: { description?: string; quantity?: number; rate?: number }[] | undefined,
+): { prepared: PreparedManualLine[]; gross: number } {
+  const prepared = (lines ?? [])
     .map((l) => ({
-      description: (l.description ?? "").trim(),
+      description: String(l.description ?? "").trim(),
       quantity: Number(l.quantity),
       rate: Number(l.rate),
     }))
@@ -1628,14 +1648,50 @@ export async function createManualSalesInvoice(input: {
     if (!(line.rate >= 0)) throw new Error("Rate cannot be negative.");
     if (!(line.amount > 0)) throw new Error("Each invoice line needs an amount greater than zero.");
   }
+  return { prepared, gross: round2(prepared.reduce((s, l) => s + l.amount, 0)) };
+}
 
-  const gross = round2(prepared.reduce((s, l) => s + l.amount, 0));
+function manualSalesDescription(
+  invoiceNumber: string,
+  customerName: string,
+  narration: string | null,
+): string {
+  return narration
+    ? `Manual sales invoice ${invoiceNumber} — ${customerName}. ${narration}`
+    : `Manual sales invoice ${invoiceNumber} — ${customerName}`;
+}
+
+function manualLineMemo(role: string, invoiceNumber: string): string {
+  if (role === "discount") return `Discount on ${invoiceNumber}`;
+  if (role === "tax") return `Sales tax on ${invoiceNumber}`;
+  return invoiceNumber;
+}
+
+/**
+ * Manual sales invoice. Does not move stock and does not require a sale order.
+ * The journal follows buildManualSalesJournal: settlement account, discount,
+ * sales income, and sales tax payable.
+ */
+export async function createManualSalesInvoice(input: {
+  customerCode: string;
+  paymentType: SalesPaymentType;
+  discount?: number;
+  salesTax?: number;
+  date: string;
+  narration?: string;
+  lines: { description?: string; quantity?: number; rate?: number }[];
+}) {
+  const date = requireIsoDate(input.date);
+  const { prepared, gross } = prepareManualInvoiceLines(input.lines);
+  const discount = round2(Number(input.discount ?? 0));
+  const tax = round2(Number(input.salesTax ?? 0));
   const plan = buildManualSalesJournal({
     gross,
-    discount: Number(input.discount ?? 0),
-    tax: Number(input.salesTax ?? 0),
+    discount,
+    tax,
     paymentType: input.paymentType,
   });
+  const paymentType = input.paymentType.trim().toUpperCase();
 
   return withTransaction(async (client) => {
     const customerId = await partyIdByCode(client, input.customerCode);
@@ -1654,11 +1710,11 @@ export async function createManualSalesInvoice(input: {
       [
         invoiceNumber,
         customerId,
-        input.date,
-        input.paymentType.trim().toUpperCase(),
+        date,
+        paymentType,
         gross,
-        round2(Number(input.discount ?? 0)),
-        round2(Number(input.salesTax ?? 0)),
+        discount,
+        tax,
         plan.net,
         narration,
       ],
@@ -1676,25 +1732,18 @@ export async function createManualSalesInvoice(input: {
       );
     }
 
-    const memoFor = (role: string) => {
-      if (role === "discount") return `Discount on ${invoiceNumber}`;
-      if (role === "tax") return `Sales tax on ${invoiceNumber}`;
-      return invoiceNumber;
-    };
     const journalEntryId = await postJournal(client, {
       voucherType: "MANUAL_SALE",
       referenceType: "MANUAL_SALE",
       referenceId: invoiceId,
-      voucherDate: input.date,
-      description: narration
-        ? `Manual sales invoice ${invoiceNumber} — ${customerName}. ${narration}`
-        : `Manual sales invoice ${invoiceNumber} — ${customerName}`,
+      voucherDate: date,
+      description: manualSalesDescription(invoiceNumber, customerName, narration),
       lines: plan.lines.map((l) => ({
         accountCode: l.accountCode,
         debit: l.debit,
         credit: l.credit,
         partyId: l.withCustomer ? customerId : null,
-        description: memoFor(l.role),
+        description: manualLineMemo(l.role, invoiceNumber),
       })),
     });
 
@@ -1707,8 +1756,8 @@ export async function createManualSalesInvoice(input: {
       invoiceId,
       invoiceNumber,
       grossAmount: gross,
-      discountAmount: round2(Number(input.discount ?? 0)),
-      taxAmount: round2(Number(input.salesTax ?? 0)),
+      discountAmount: discount,
+      taxAmount: tax,
       netAmount: plan.net,
       journalEntryId,
     };
@@ -1719,7 +1768,7 @@ const MANUAL_INVOICE_SELECT = `
   SELECT m.id, m.invoice_number, m.invoice_date::text, m.payment_type,
          m.gross_amount::text, m.discount_amount::text, m.tax_amount::text, m.net_amount::text,
          m.narration, m.status, m.journal_entry_id, je.voucher_number,
-         p.id AS customer_id, p.party_name AS customer_name,
+         p.id AS customer_id, p.party_code AS customer_code, p.party_name AS customer_name,
          p.address AS customer_address, p.phone AS customer_phone
   FROM sales.manual_invoices m
   JOIN master.parties p ON p.id = m.customer_id
@@ -1764,6 +1813,426 @@ export async function listManualInvoices(): Promise<ManualInvoiceSummary[]> {
      ORDER BY m.created_at DESC
      LIMIT 100`,
   );
+}
+
+interface DispatchEditRow {
+  id: string;
+  sale_order_id: string;
+  item_id: string;
+  quantity: string;
+  dispatch_date: string;
+  inventory_transaction_id: string | null;
+  journal_entry_id: string | null;
+  invoice_number: string;
+  do_number: string;
+}
+
+const DISPATCH_EDIT_SQL = `
+  SELECT id, sale_order_id, item_id, quantity::text, dispatch_date::text,
+         inventory_transaction_id, journal_entry_id, invoice_number, do_number
+  FROM sales.dispatches
+`;
+
+/** The finished-goods issue that belongs to this dispatch, and to no other bill. */
+async function resolveDispatchInventoryTxn(
+  client: PoolClient,
+  row: DispatchEditRow,
+): Promise<string> {
+  if (row.inventory_transaction_id) {
+    const shared = await client.query(
+      `SELECT 1 FROM sales.dispatches
+       WHERE inventory_transaction_id = $1 AND id <> $2`,
+      [row.inventory_transaction_id, row.id],
+    );
+    if (shared.rows.length > 0) {
+      throw new Error(
+        "This dispatch shares a stock movement with another bill, so it cannot be changed.",
+      );
+    }
+    const exists = await client.query(
+      `SELECT id FROM inventory.inventory_transactions WHERE id = $1`,
+      [row.inventory_transaction_id],
+    );
+    if (exists.rows.length === 1) return row.inventory_transaction_id;
+  }
+
+  const found = await client.query<{ id: string }>(
+    `SELECT it.id
+     FROM inventory.inventory_transactions it
+     JOIN inventory.inventory_movements im ON im.inventory_transaction_id = it.id
+     WHERE it.transaction_type = 'SALE_DISPATCH'
+       AND it.reference_type = 'SALE_ORDER'
+       AND it.reference_id = $1
+       AND it.transaction_date = $2::date
+       AND im.item_id = $3
+       AND im.quantity = $4::numeric
+       AND im.sale_order_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM sales.dispatches d
+         WHERE d.inventory_transaction_id = it.id AND d.id <> $5
+       )
+     ORDER BY it.posted_at NULLS LAST, it.id`,
+    [row.sale_order_id, row.dispatch_date, row.item_id, row.quantity, row.id],
+  );
+  if (found.rows.length === 1) return found.rows[0].id;
+
+  const siblings = await client.query<{ id: string }>(
+    `SELECT id FROM sales.dispatches
+     WHERE sale_order_id = $1 AND item_id = $2 AND quantity = $3::numeric
+       AND dispatch_date = $4::date
+       AND (inventory_transaction_id IS NULL OR id = $5)
+     ORDER BY created_at, id`,
+    [row.sale_order_id, row.item_id, row.quantity, row.dispatch_date, row.id],
+  );
+  const index = siblings.rows.findIndex((sibling) => sibling.id === row.id);
+  if (found.rows.length > 1 && found.rows.length === siblings.rows.length && index >= 0) {
+    return found.rows[index].id;
+  }
+  throw new Error(
+    "Could not match the finished-goods movement for this dispatch, so the bill cannot be changed.",
+  );
+}
+
+/** Put the previous issue back, then post the replacement movement on the same transaction. */
+async function rewriteDispatchMovement(
+  client: PoolClient,
+  txnId: string,
+  date: string,
+  movement: MovementInput,
+) {
+  await client.query(
+    `DELETE FROM inventory.inventory_movements WHERE inventory_transaction_id = $1`,
+    [txnId],
+  );
+  await client.query(
+    `UPDATE inventory.inventory_transactions SET transaction_date = $2 WHERE id = $1`,
+    [txnId, date],
+  );
+  await insertStockMovement(client, txnId, date, movement);
+}
+
+/**
+ * Rewrite the lines of an existing voucher and keep its number.
+ * A posted voucher stays posted. A draft is posted again so the books match the bill.
+ */
+async function replaceJournalLines(
+  client: PoolClient,
+  journalEntryId: string,
+  opts: {
+    voucherDate: string;
+    description: string;
+    lines: JournalLineInput[];
+  },
+) {
+  const lines = opts.lines.filter(
+    (l) => round2(l.debit ?? 0) > 0 || round2(l.credit ?? 0) > 0,
+  );
+  if (lines.length < 2) {
+    throw new Error("A journal entry needs at least two non-zero lines.");
+  }
+  const existing = await client.query<{ status: string }>(
+    `SELECT status FROM accounting.journal_entries WHERE id = $1 FOR UPDATE`,
+    [journalEntryId],
+  );
+  if (existing.rows.length === 0) throw new Error("Linked voucher was not found.");
+  const status = existing.rows[0].status;
+  if (status !== "POSTED" && status !== "DRAFT") {
+    throw new Error(`Voucher status ${status} cannot be adjusted.`);
+  }
+  await client.query(
+    `UPDATE accounting.journal_entries
+     SET voucher_date = $2, description = $3
+     WHERE id = $1`,
+    [journalEntryId, opts.voucherDate, opts.description],
+  );
+  await client.query(
+    `DELETE FROM accounting.journal_lines WHERE journal_entry_id = $1`,
+    [journalEntryId],
+  );
+  let lineNo = 0;
+  for (const line of lines) {
+    lineNo += 1;
+    const accountId = await accountIdByCode(client, line.accountCode);
+    await client.query(
+      `INSERT INTO accounting.journal_lines
+         (journal_entry_id, line_number, account_id, party_id, debit, credit,
+          sale_order_id, production_order_id, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        journalEntryId,
+        lineNo,
+        accountId,
+        line.partyId ?? null,
+        round2(line.debit ?? 0),
+        round2(line.credit ?? 0),
+        line.saleOrderId ?? null,
+        line.productionOrderId ?? null,
+        line.description ?? opts.description,
+      ],
+    );
+  }
+  if (status === "DRAFT") {
+    const adminId = await getAdminUserId(client);
+    await client.query("SELECT accounting.post_journal_entry($1, $2)", [
+      journalEntryId,
+      adminId,
+    ]);
+  } else {
+    await client.query("SELECT accounting.validate_journal_entry($1)", [journalEntryId]);
+  }
+}
+
+/**
+ * Admin edit of a process-locked sale. Keeps the delivery order and invoice
+ * numbers, rewrites finished-goods stock, and adjusts the linked sales voucher.
+ */
+export async function updateDispatchSale(input: {
+  id: string;
+  finishedItemCode: string;
+  customerCode: string;
+  quantity: number;
+  rate: number;
+  paymentType: string;
+  date: string;
+}) {
+  const id = requireDocumentId(input.id);
+  if (!(Number(input.quantity) > 0)) throw new Error("Quantity must be greater than zero.");
+  const date = requireIsoDate(input.date);
+  const quantity = Number(input.quantity);
+  const rate = Number(input.rate);
+  const plan = buildDispatchSalesJournal({
+    amount: round2(quantity * rate),
+    paymentType: input.paymentType,
+  });
+  const paymentType = input.paymentType.trim().toUpperCase();
+
+  return withTransaction(async (client) => {
+    const res = await client.query<DispatchEditRow>(
+      `${DISPATCH_EDIT_SQL} WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const row = res.rows[0];
+    if (!row) throw new Error("Sales invoice not found.");
+
+    const customerId = await partyIdByCode(client, input.customerCode);
+    const finishedItemId = await itemIdByCode(client, input.finishedItemCode);
+    const itemRes = await client.query<{ item_name: string; item_type: string }>(
+      `SELECT item_name, item_type FROM master.items WHERE id = $1`,
+      [finishedItemId],
+    );
+    const item = itemRes.rows[0];
+    if (!item || item.item_type !== "FINISHED_GOOD") {
+      throw new Error("Dispatch sales use a finished good.");
+    }
+    const finishedGoods = await locationIdByCode(client, "FINISHED_GOODS");
+    const txnId = await resolveDispatchInventoryTxn(client, row);
+    await rewriteDispatchMovement(client, txnId, date, {
+      itemId: finishedItemId,
+      fromLocationId: finishedGoods,
+      quantity,
+      rate,
+      value: plan.amount,
+      saleOrderId: row.sale_order_id,
+    });
+
+    await client.query(
+      `UPDATE sales.dispatches
+       SET customer_id = $2, item_id = $3, dispatch_date = $4,
+           quantity = $5, rate = $6, amount = $7, payment_type = $8,
+           inventory_transaction_id = $9
+       WHERE id = $1`,
+      [id, customerId, finishedItemId, date, quantity, rate, plan.amount, paymentType, txnId],
+    );
+
+    const description = `Sales invoice ${row.invoice_number} / ${row.do_number} — ${item.item_name}`;
+    const lines: JournalLineInput[] = plan.lines.map((l) => ({
+      accountCode: l.accountCode,
+      debit: l.debit,
+      credit: l.credit,
+      partyId: l.withCustomer ? customerId : null,
+      saleOrderId: row.sale_order_id,
+      description: row.invoice_number,
+    }));
+    let journalEntryId = row.journal_entry_id;
+    if (journalEntryId) {
+      await replaceJournalLines(client, journalEntryId, {
+        voucherDate: date,
+        description,
+        lines,
+      });
+    } else {
+      journalEntryId = await postJournal(client, {
+        voucherType: "SALE",
+        referenceType: "SALE_ORDER",
+        referenceId: row.sale_order_id,
+        voucherDate: date,
+        description,
+        lines,
+      });
+      await client.query(
+        `UPDATE sales.dispatches SET journal_entry_id = $2 WHERE id = $1`,
+        [id, journalEntryId],
+      );
+    }
+
+    return {
+      dispatchId: id,
+      invoiceNumber: row.invoice_number,
+      doNumber: row.do_number,
+      amount: plan.amount,
+      journalEntryId,
+    };
+  });
+}
+
+/** Admin delete of a process-locked sale, its voucher, and its stock issue. */
+export async function deleteDispatchSale(input: { id: string }) {
+  const id = requireDocumentId(input.id);
+  return withTransaction(async (client) => {
+    const res = await client.query<DispatchEditRow>(
+      `${DISPATCH_EDIT_SQL} WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const row = res.rows[0];
+    if (!row) throw new Error("Sales invoice not found.");
+    const txnId = await resolveDispatchInventoryTxn(client, row);
+
+    await client.query(`DELETE FROM sales.dispatches WHERE id = $1`, [id]);
+    await client.query(
+      `DELETE FROM inventory.inventory_movements WHERE inventory_transaction_id = $1`,
+      [txnId],
+    );
+    await client.query(`DELETE FROM inventory.inventory_transactions WHERE id = $1`, [txnId]);
+
+    if (row.journal_entry_id) {
+      await client.query(
+        `DELETE FROM master.document_files WHERE entity_type = 'JOURNAL' AND entity_id = $1`,
+        [row.journal_entry_id],
+      );
+      await client.query(
+        `DELETE FROM accounting.journal_lines WHERE journal_entry_id = $1`,
+        [row.journal_entry_id],
+      );
+      await client.query(`DELETE FROM accounting.journal_entries WHERE id = $1`, [
+        row.journal_entry_id,
+      ]);
+    }
+
+    await client.query(
+      `UPDATE sales.sale_orders SET status = 'OPEN', updated_at = NOW()
+       WHERE id = $1 AND status = 'CLOSED'
+         AND NOT EXISTS (SELECT 1 FROM sales.dispatches WHERE sale_order_id = $1)`,
+      [row.sale_order_id],
+    );
+    return { ok: true, invoiceNumber: row.invoice_number };
+  });
+}
+
+/**
+ * Admin edit of a manual sales invoice. Keeps the invoice number and rewrites
+ * the linked voucher so the accounts follow the new bill.
+ */
+export async function updateManualSalesInvoice(input: {
+  id: string;
+  customerCode: string;
+  paymentType: string;
+  discount?: number;
+  salesTax?: number;
+  date: string;
+  narration?: string;
+  lines: { description?: string; quantity?: number; rate?: number }[];
+}) {
+  const id = requireDocumentId(input.id);
+  const date = requireIsoDate(input.date);
+  const { prepared, gross } = prepareManualInvoiceLines(input.lines);
+  const discount = round2(Number(input.discount ?? 0));
+  const tax = round2(Number(input.salesTax ?? 0));
+  const plan = buildManualSalesJournal({
+    gross,
+    discount,
+    tax,
+    paymentType: input.paymentType,
+  });
+  const paymentType = input.paymentType.trim().toUpperCase();
+  const narration = (input.narration ?? "").trim() || null;
+
+  return withTransaction(async (client) => {
+    const existing = await client.query<{
+      invoice_number: string;
+      journal_entry_id: string | null;
+    }>(
+      `SELECT invoice_number, journal_entry_id
+       FROM sales.manual_invoices WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const row = existing.rows[0];
+    if (!row) throw new Error("Sales invoice not found.");
+
+    const customerId = await partyIdByCode(client, input.customerCode);
+    const customerName = (
+      await client.query(`SELECT party_name FROM master.parties WHERE id = $1`, [customerId])
+    ).rows[0].party_name as string;
+
+    await client.query(
+      `UPDATE sales.manual_invoices
+       SET customer_id = $2, invoice_date = $3, payment_type = $4,
+           gross_amount = $5, discount_amount = $6, tax_amount = $7,
+           net_amount = $8, narration = $9, status = 'POSTED'
+       WHERE id = $1`,
+      [id, customerId, date, paymentType, gross, discount, tax, plan.net, narration],
+    );
+    await client.query(`DELETE FROM sales.manual_invoice_lines WHERE invoice_id = $1`, [id]);
+    let lineNo = 0;
+    for (const line of prepared) {
+      lineNo += 1;
+      await client.query(
+        `INSERT INTO sales.manual_invoice_lines
+           (invoice_id, line_number, description, quantity, rate, amount)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [id, lineNo, line.description, line.quantity, line.rate, line.amount],
+      );
+    }
+
+    const description = manualSalesDescription(row.invoice_number, customerName, narration);
+    const lines: JournalLineInput[] = plan.lines.map((l) => ({
+      accountCode: l.accountCode,
+      debit: l.debit,
+      credit: l.credit,
+      partyId: l.withCustomer ? customerId : null,
+      description: manualLineMemo(l.role, row.invoice_number),
+    }));
+    let journalEntryId = row.journal_entry_id;
+    if (journalEntryId) {
+      await replaceJournalLines(client, journalEntryId, {
+        voucherDate: date,
+        description,
+        lines,
+      });
+    } else {
+      journalEntryId = await postJournal(client, {
+        voucherType: "MANUAL_SALE",
+        referenceType: "MANUAL_SALE",
+        referenceId: id,
+        voucherDate: date,
+        description,
+        lines,
+      });
+      await client.query(
+        `UPDATE sales.manual_invoices SET journal_entry_id = $2 WHERE id = $1`,
+        [id, journalEntryId],
+      );
+    }
+
+    return {
+      invoiceId: id,
+      invoiceNumber: row.invoice_number,
+      grossAmount: gross,
+      discountAmount: discount,
+      taxAmount: tax,
+      netAmount: plan.net,
+      journalEntryId,
+    };
+  });
 }
 
 // ===========================================================================
@@ -2005,6 +2474,53 @@ export async function getJournalRegister(range?: DateRange) {
      GROUP BY je.id
      ORDER BY je.voucher_date DESC, je.created_at DESC`,
     dc.params,
+  );
+}
+
+export interface SalesInvoiceReportRow {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  kind: "PROCESS" | "MANUAL";
+  customer_name: string;
+  payment_type: string;
+  net_amount: string;
+  voucher_number: string | null;
+  journal_entry_id: string | null;
+  do_number: string | null;
+}
+
+/** System-locked and manual sales invoices for the hyperlinked invoice report. */
+export async function listSalesInvoiceReport(range?: DateRange): Promise<SalesInvoiceReportRow[]> {
+  const from = range?.from || null;
+  const to = range?.to || null;
+  return query<SalesInvoiceReportRow>(
+    `SELECT id, invoice_number, invoice_date, kind, customer_name, payment_type,
+            net_amount, voucher_number, journal_entry_id, do_number
+     FROM (
+       SELECT d.id, d.invoice_number, d.dispatch_date::text AS invoice_date,
+              'PROCESS'::text AS kind, p.party_name AS customer_name, d.payment_type,
+              d.amount::text AS net_amount, je.voucher_number, d.journal_entry_id,
+              d.do_number
+       FROM sales.dispatches d
+       JOIN master.parties p ON p.id = d.customer_id
+       LEFT JOIN accounting.journal_entries je ON je.id = d.journal_entry_id
+       WHERE ($1::date IS NULL OR d.dispatch_date >= $1::date)
+         AND ($2::date IS NULL OR d.dispatch_date <= $2::date)
+       UNION ALL
+       SELECT m.id, m.invoice_number, m.invoice_date::text,
+              'MANUAL'::text, p.party_name, m.payment_type,
+              m.net_amount::text, je.voucher_number, m.journal_entry_id,
+              NULL::varchar(100)
+       FROM sales.manual_invoices m
+       JOIN master.parties p ON p.id = m.customer_id
+       LEFT JOIN accounting.journal_entries je ON je.id = m.journal_entry_id
+       WHERE ($1::date IS NULL OR m.invoice_date >= $1::date)
+         AND ($2::date IS NULL OR m.invoice_date <= $2::date)
+     ) invoices
+     ORDER BY invoice_date DESC, invoice_number DESC
+     LIMIT 300`,
+    [from, to],
   );
 }
 

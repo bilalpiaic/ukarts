@@ -18,11 +18,13 @@ export function DeleteButton({
   payload,
   label = "Delete",
   confirmText = "Delete this record? This cannot be undone.",
+  redirectTo,
 }: {
   endpoint: string;
   payload: Record<string, unknown>;
   label?: string;
   confirmText?: string;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,8 @@ export function DeleteButton({
     setBusy(true);
     try {
       await post(endpoint, payload);
-      router.refresh();
+      if (redirectTo) router.push(redirectTo);
+      else router.refresh();
     } catch (e) {
       window.alert((e as Error).message);
     } finally {

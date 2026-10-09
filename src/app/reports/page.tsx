@@ -7,8 +7,10 @@ import {
   getOrganization,
   getProfitLoss,
   getTrialBalance,
+  listSalesInvoiceReport,
 } from "@/lib/erp";
 import { money, qty } from "@/lib/format";
+import { salesPaymentLabel } from "@/lib/sales-invoice";
 import { ControlLedgerComposition, TrialBalanceWithSubs } from "../control-ledgers";
 import { PrintHeader } from "../print-header";
 import { DateFilter } from "./date-filter";
@@ -24,13 +26,14 @@ export default async function Reports({
   const { from, to } = await searchParams;
   const range = { from, to };
 
-  const [org, trial, pl, journal, controls, stock] = await Promise.all([
+  const [org, trial, pl, journal, controls, stock, invoices] = await Promise.all([
     getOrganization(),
     getTrialBalance(range),
     getProfitLoss(range),
     getJournalRegister(range),
     getControlLedgers(range),
     getInventoryByStage(),
+    listSalesInvoiceReport(range),
   ]);
 
   const periodText =
@@ -109,6 +112,73 @@ export default async function Reports({
                     <td className="num">{qty(r.stock)}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card full" id="sales-invoices">
+          <h2>Sales Invoices</h2>
+          <p className="subtitle">
+            Invoice numbers open the bill. System locked sales and manual sales invoices are listed together.
+          </p>
+          {invoices.length === 0 ? (
+            <p className="subtitle">No sales invoices in this period.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>DO</th>
+                  <th>Settlement</th>
+                  <th className="num">Net</th>
+                  <th>Voucher</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => {
+                  const href =
+                    inv.kind === "PROCESS"
+                      ? `/sales/dispatches/${inv.id}/invoice`
+                      : `/sales/invoices/${inv.id}/print`;
+                  return (
+                    <tr key={`${inv.kind}-${inv.id}`}>
+                      <td>
+                        <Link className="src-link" href={href}>
+                          {inv.invoice_number}
+                        </Link>
+                      </td>
+                      <td>
+                        <span className="pill">{inv.kind === "PROCESS" ? "System locked" : "Manual"}</span>
+                      </td>
+                      <td>{inv.invoice_date}</td>
+                      <td>{inv.customer_name}</td>
+                      <td>
+                        {inv.do_number ? (
+                          <Link className="src-link" href={`/sales/dispatches/${inv.id}/do`}>
+                            {inv.do_number}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>{salesPaymentLabel(inv.payment_type)}</td>
+                      <td className="num">{money(inv.net_amount)}</td>
+                      <td>
+                        {inv.journal_entry_id ? (
+                          <Link className="src-link" href={`/vouchers/${inv.journal_entry_id}`}>
+                            {inv.voucher_number}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

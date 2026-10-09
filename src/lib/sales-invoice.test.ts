@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   SALES_ACCOUNTS,
+  buildDispatchSalesJournal,
   buildManualSalesJournal,
   customerClosingBalance,
   receivableOnInvoice,
@@ -71,6 +72,23 @@ describe("buildManualSalesJournal", () => {
       invoice: 562500,
       closing: 662500,
     });
+  });
+
+  it("builds a balanced cash or credit dispatch voucher", () => {
+    const credit = buildDispatchSalesJournal({ amount: 1850, paymentType: "CREDIT" });
+    assert.equal(credit.amount, 1850);
+    assert.deepEqual(
+      credit.lines.map((l) => [l.accountCode, l.debit, l.credit, l.withCustomer]),
+      [[SALES_ACCOUNTS.receivable, 1850, 0, true], [SALES_ACCOUNTS.sales, 0, 1850, false]],
+    );
+    const cash = buildDispatchSalesJournal({ amount: 400.125, paymentType: "cash" });
+    assert.equal(cash.amount, 400.13);
+    assert.equal(cash.lines[0]?.accountCode, SALES_ACCOUNTS.cash);
+    assert.equal(cash.lines[0]?.withCustomer, false);
+    assert.throws(
+      () => buildDispatchSalesJournal({ amount: 0, paymentType: "CREDIT" }),
+      /greater than zero/,
+    );
   });
 
   it("rejects a discount above the goods total", () => {

@@ -654,6 +654,76 @@ CREATE INDEX IF NOT EXISTS idx_dispatches_sale_order
 CREATE INDEX IF NOT EXISTS idx_manual_invoices_customer
     ON sales.manual_invoices(customer_id);
 
+-- Link a process dispatch to the finished-goods issue it posted, so an admin
+-- edit or delete can adjust that movement without touching other stock.
+ALTER TABLE sales.dispatches
+  ADD COLUMN IF NOT EXISTS inventory_transaction_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'dispatches_inventory_transaction_id_fkey'
+  ) THEN
+    ALTER TABLE sales.dispatches
+      ADD CONSTRAINT dispatches_inventory_transaction_id_fkey
+      FOREIGN KEY (inventory_transaction_id)
+      REFERENCES inventory.inventory_transactions(id);
+  END IF;
+END $$;
+
+-- Pair each dispatch with the stock issue of the same sale order, item,
+-- quantity, and date. When several match, keep creation order.
+WITH dispatch_keys AS (
+  SELECT d.id AS dispatch_id, d.sale_order_id, d.item_id, d.quantity,
+         d.dispatch_date, d.created_at
+  FROM sales.dispatches d
+  WHERE d.inventory_transaction_id IS NULL
+),
+txn_keys AS (
+  SELECT it.id AS txn_id, it.reference_id AS sale_order_id, im.item_id,
+         im.quantity, it.transaction_date AS dispatch_date, it.posted_at
+  FROM inventory.inventory_transactions it
+  JOIN inventory.inventory_movements im ON im.inventory_transaction_id = it.id
+  WHERE it.transaction_type = 'SALE_DISPATCH'
+    AND it.reference_type = 'SALE_ORDER'
+    AND NOT EXISTS (
+      SELECT 1 FROM sales.dispatches d WHERE d.inventory_transaction_id = it.id
+    )
+),
+ranked_d AS (
+  SELECT dispatch_id, sale_order_id, item_id, quantity, dispatch_date,
+         row_number() OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+           ORDER BY created_at, dispatch_id
+         ) AS n,
+         count(*) OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+         ) AS n_count
+  FROM dispatch_keys
+),
+ranked_t AS (
+  SELECT txn_id, sale_order_id, item_id, quantity, dispatch_date,
+         row_number() OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+           ORDER BY posted_at NULLS LAST, txn_id
+         ) AS n,
+         count(*) OVER (
+           PARTITION BY sale_order_id, item_id, quantity, dispatch_date
+         ) AS n_count
+  FROM txn_keys
+)
+UPDATE sales.dispatches d
+SET inventory_transaction_id = t.txn_id
+FROM ranked_d rd
+JOIN ranked_t t
+  ON t.sale_order_id = rd.sale_order_id
+ AND t.item_id = rd.item_id
+ AND t.quantity = rd.quantity
+ AND t.dispatch_date = rd.dispatch_date
+ AND t.n = rd.n
+ AND t.n_count = rd.n_count
+WHERE d.id = rd.dispatch_id;
+
 -- Per-type voucher numbering (CR-000001, CP-000001, …) as in Easy-Books.
 CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (
     voucher_type VARCHAR(10) PRIMARY KEY,

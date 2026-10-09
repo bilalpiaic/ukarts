@@ -54,9 +54,10 @@ a single transaction with a balanced journal and inventory-ledger movements:
   bill (`Dr Processing Cost / Cr Processor Payable`, net of recovery).
 - **Stitching & finished goods** — issue processed cloth to stitcher; stitching
   production receipt (finished goods into inventory); stitching bill.
-- **Sales** — dispatch finished goods with cash or credit revenue postings, and print a Delivery Order, Customer Sales Invoice, and the sales voucher. A separate manual sales invoice posts the bill to Cash, Bank, or Accounts Receivable, Sales Income, Discount Allowed, and Sales Tax Payable, and prints with that accounting treatment.
+- **Sales** — dispatch finished goods with cash or credit revenue postings, and print a Delivery Order, Customer Sales Invoice, and the sales voucher. A separate manual sales invoice posts the bill to Cash, Bank, or Accounts Receivable, Sales Income, Discount Allowed, and Sales Tax Payable, and prints with the customer closing balance. An administrator can edit or delete either invoice; the linked voucher is rewritten to match, and a process edit also adjusts finished-goods stock.
 - **Reports** — trial balance with control/sub-ledger composition (customers
   under AR, vendors under Supplier Payable, processors under Processor Payable),
+  a sales invoice register whose invoice numbers open the bill,
   inventory by stage, production costing, profitability, and KPI dashboard.
 
 Each business action is exposed at `POST /api/action/[name]` and driven from the

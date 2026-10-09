@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ActionForm } from "../action-form";
 import { MultiLineForm } from "../multi-line-form";
+import { getSession, isAdmin } from "@/lib/auth";
 import {
   getInventoryByStage,
   getItemsByType,
@@ -15,14 +16,16 @@ import { salesPaymentLabel } from "@/lib/sales-invoice";
 import { PrintButton } from "../print-button";
 import { PrintOrgHeader } from "../print-header";
 import { displayVoucherType } from "@/lib/vouchers";
+import { InvoiceAdminActions } from "./invoice-admin-actions";
 import { DispatchPrintLinks } from "./print-links";
 import { ManualInvoicePrintLinks } from "./manual-print-links";
 
 export const dynamic = "force-dynamic";
 
 export default async function Sales() {
-  const [customers, finishedItems, saleOrders, stage, journals, dispatches, manualInvoices] =
+  const [session, customers, finishedItems, saleOrders, stage, journals, dispatches, manualInvoices] =
     await Promise.all([
+      getSession(),
       getPartiesByRole("CUSTOMER"),
       getItemsByType("FINISHED_GOOD"),
       getSaleOrders(),
@@ -31,6 +34,7 @@ export default async function Sales() {
       listDispatches(),
       listManualInvoices(),
     ]);
+  const admin = isAdmin(session);
 
   const fgStock = stage.filter((s) => s.item_type === "FINISHED_GOOD");
   const soOptions = saleOrders.map((s) => ({ value: s.id, label: `${s.so_number} — ${s.buyer}` }));
@@ -40,7 +44,12 @@ export default async function Sales() {
       <PrintOrgHeader title="Sales & Dispatch" />
       <div className="page-head">
         <h1 className="page-title">Sales &amp; Dispatch</h1>
-        <PrintButton />
+        <div className="row-actions">
+          <Link className="btn-ghost" href="/reports#sales-invoices">
+            Invoice report
+          </Link>
+          <PrintButton />
+        </div>
       </div>
       <div className="grid">
         <div className="card">
@@ -147,12 +156,17 @@ export default async function Sales() {
                   <th>Settlement</th>
                   <th className="num">Net</th>
                   <th className="no-print">Print</th>
+                  {admin ? <th className="no-print">Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {manualInvoices.map((inv) => (
                   <tr key={inv.id}>
-                    <td>{inv.invoice_number}</td>
+                    <td>
+                      <Link className="src-link" href={`/sales/invoices/${inv.id}/print`}>
+                        {inv.invoice_number}
+                      </Link>
+                    </td>
                     <td>{inv.invoice_date}</td>
                     <td>{inv.customer_name}</td>
                     <td>{salesPaymentLabel(inv.payment_type)}</td>
@@ -163,6 +177,16 @@ export default async function Sales() {
                         journalEntryId={inv.journal_entry_id}
                       />
                     </td>
+                    {admin ? (
+                      <td className="no-print">
+                        <InvoiceAdminActions
+                          editHref={`/sales/invoices/${inv.id}/edit`}
+                          endpoint="/api/admin/manual-sales-delete"
+                          invoiceId={inv.id}
+                          confirmText="Delete this manual sales invoice and its voucher? This cannot be undone."
+                        />
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -187,13 +211,22 @@ export default async function Sales() {
                   <th>Item</th>
                   <th className="num">Amount</th>
                   <th className="no-print">Print</th>
+                  {admin ? <th className="no-print">Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {dispatches.map((d) => (
                   <tr key={d.id}>
-                    <td>{d.do_number}</td>
-                    <td>{d.invoice_number}</td>
+                    <td>
+                      <Link className="src-link" href={`/sales/dispatches/${d.id}/do`}>
+                        {d.do_number}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link className="src-link" href={`/sales/dispatches/${d.id}/invoice`}>
+                        {d.invoice_number}
+                      </Link>
+                    </td>
                     <td>{d.dispatch_date}</td>
                     <td>{d.customer_name}</td>
                     <td>{d.item_name}</td>
@@ -201,6 +234,16 @@ export default async function Sales() {
                     <td className="no-print">
                       <DispatchPrintLinks dispatchId={d.id} journalEntryId={d.journal_entry_id} />
                     </td>
+                    {admin ? (
+                      <td className="no-print">
+                        <InvoiceAdminActions
+                          editHref={`/sales/dispatches/${d.id}/edit`}
+                          endpoint="/api/admin/dispatch-sale-delete"
+                          invoiceId={d.id}
+                          confirmText="Delete this sales invoice, its delivery order, and its voucher? Finished goods return to stock. This cannot be undone."
+                        />
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
