@@ -1,5 +1,5 @@
 import type { CustomerBalance, DispatchDocument, Organization } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDocDate, money, qty } from "@/lib/format";
 import { PrintButton } from "../print-button";
 import { CustomerClosingBalance } from "./customer-balance";
 import { InvoiceAdminActions } from "./invoice-admin-actions";
@@ -56,7 +56,7 @@ export function CommercialSheet({
           </div>
           <div>
             <div className="k">Date</div>
-            <div className="v">{doc.dispatch_date}</div>
+            <div className="v">{formatDocDate(doc.dispatch_date)}</div>
           </div>
           <div>
             <div className="k">Sale Order</div>

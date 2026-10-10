@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { AppShell } from "./app-shell";
+import { PrintCredit } from "./print-credit";
 import { getSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default async function RootLayout({
         ) : (
           children
         )}
+        <PrintCredit />
       </body>
     </html>
   );

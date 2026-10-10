@@ -1,5 +1,5 @@
 import type { CustomerBalance, ManualInvoiceDocument, Organization } from "@/lib/erp";
-import { money, qty } from "@/lib/format";
+import { formatDocDate, money, qty } from "@/lib/format";
 import { salesPaymentLabel } from "@/lib/sales-invoice";
 import { PrintButton } from "../print-button";
 import { CustomerClosingBalance } from "./customer-balance";
@@ -54,7 +54,7 @@ export function ManualInvoiceSheet({
           </div>
           <div>
             <div className="k">Date</div>
-            <div className="v">{doc.invoice_date}</div>
+            <div className="v">{formatDocDate(doc.invoice_date)}</div>
           </div>
           <div>
             <div className="k">Payment</div>
