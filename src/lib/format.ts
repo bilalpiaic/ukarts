@@ -21,3 +21,15 @@ export function formatDocDate(value: string | null | undefined): string {
   if (!month) return raw;
   return `${match[3]}-${month}-${match[1].slice(-2)}`;
 }
+
+/** Date and time printed at the top of a document, for example 10-Oct-26, 3:07 PM. */
+export function formatPrintStamp(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = MONTHS[date.getMonth()];
+  const year = String(date.getFullYear()).slice(-2);
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const hour24 = date.getHours();
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${day}-${month}-${year}, ${hour12}:${minutes} ${suffix}`;
+}

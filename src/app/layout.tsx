@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import { AppShell } from "./app-shell";
 import { PrintCredit } from "./print-credit";
+import { PrintStamp } from "./print-stamp";
 import { getSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default async function RootLayout({
         ) : (
           children
         )}
+        <PrintStamp />
         <PrintCredit />
       </body>
     </html>
