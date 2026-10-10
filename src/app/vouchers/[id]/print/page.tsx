@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJournalEntry, getOrganization } from "@/lib/erp";
-import { money } from "@/lib/format";
+import { formatDocDate, money } from "@/lib/format";
 import { displayVoucherType } from "@/lib/vouchers";
 import { PrintButton } from "../../../print-button";
 
@@ -47,7 +47,7 @@ export default async function VoucherPrint({
           </div>
           <div>
             <div className="k">Date</div>
-            <div className="v">{h.voucher_date}</div>
+            <div className="v">{formatDocDate(h.voucher_date)}</div>
           </div>
           <div>
             <div className="k">Status</div>
