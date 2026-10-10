@@ -1642,6 +1642,10 @@ tr.ledger-sub td:first-child {
   text-align: center;
 }
 
+.print-stamp {
+  display: none;
+}
+
 .print-credit {
   display: none;
   margin: 18px 0 0;
@@ -1732,7 +1736,18 @@ body:has(.print-page) .print-credit {
   html,
   body {
     margin: 0 !important;
-    padding: 12mm 14mm 18mm !important;
+    padding: 16mm 14mm 18mm !important;
+  }
+  .print-stamp {
+    display: block !important;
+    position: fixed;
+    top: 5mm;
+    left: 14mm;
+    right: 14mm;
+    margin: 0;
+    text-align: right;
+    font-size: 10px;
+    color: #333;
   }
   .print-credit {
     display: block !important;
