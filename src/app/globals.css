@@ -1732,11 +1732,29 @@ body:has(.print-page) .print-credit {
 @media print {
   @page {
     margin: 0;
+    /* A zero margin keeps the browser from printing the site address.
+       The blank line drops the serial below the paper edge, level with the date. */
+    @top-left {
+      content: "\A" counter(page) "/" counter(pages);
+      white-space: pre;
+      margin-left: 14mm;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      line-height: 5mm;
+      color: #333;
+    }
   }
   html,
   body {
     margin: 0 !important;
     padding: 16mm 14mm 18mm !important;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .print-page,
+  .print-sheet {
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
   }
   .print-stamp {
     display: block !important;
