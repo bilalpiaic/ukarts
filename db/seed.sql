@@ -15,6 +15,25 @@ ON CONFLICT (username) DO NOTHING;
 UPDATE master.users SET password_hash = crypt('admin123', gen_salt('bf'))
 WHERE username = 'admin' AND password_hash = 'x';
 
+-- One-time reset of the bootstrap admin password to admin123.
+-- The patch row makes this run once; later password changes in Settings stay put.
+CREATE TABLE IF NOT EXISTS master.schema_patches (
+    id TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+WITH patch AS (
+    INSERT INTO master.schema_patches (id)
+    VALUES ('reset-admin-password-20261008')
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id
+)
+UPDATE master.users
+SET password_hash = crypt('admin123', gen_salt('bf')),
+    updated_at = NOW()
+WHERE username = 'admin'
+  AND EXISTS (SELECT 1 FROM patch);
+
 -- Organization defaults (used in print headers and settings)
 INSERT INTO master.organization (name, currency, about)
 SELECT 'U.K Arts', 'PKR',
