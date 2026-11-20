@@ -1813,6 +1813,9 @@ body:has(.print-page) .print-credit {
   td {
     border-bottom: 1px solid #ccc;
   }
+  thead th {
+    position: static;
+  }
   .print-header {
     display: block !important;
     margin-bottom: 12px;
@@ -1839,5 +1842,68 @@ body:has(.print-page) .print-credit {
   }
   .print-sheet-table th {
     background: #fff;
+  }
+
+  /* Party and account ledgers: one line per column, table stays with the letterhead. */
+  .ledger-sheet .print-header {
+    margin-bottom: 6px;
+  }
+  .ledger-sheet .print-header-logo {
+    width: 52px;
+    height: 52px;
+  }
+  .ledger-sheet .print-about {
+    margin: 4px 0 2px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .ledger-sheet .page-title {
+    font-size: 14px;
+    margin: 0 0 4px;
+  }
+  .ledger-sheet .subtitle {
+    margin: 0 0 6px;
+    font-size: 11px;
+  }
+  .ledger-sheet .ledger-postings {
+    break-inside: auto;
+    overflow: visible;
+    padding: 0;
+    border: none;
+  }
+  .ledger-sheet .ledger-postings h2 {
+    margin: 0 0 4px;
+    padding-bottom: 2px;
+    font-size: 11px;
+  }
+  table.ledger-print {
+    table-layout: auto;
+    width: 100%;
+    min-width: 0;
+    font-size: 9.5px;
+    line-height: 1.15;
+  }
+  table.ledger-print th,
+  table.ledger-print td {
+    white-space: nowrap;
+    hyphens: none;
+    padding: 2px 4px;
+  }
+  table.ledger-print thead th {
+    position: static;
+  }
+  table.ledger-print col.col-desc {
+    width: 100%;
+  }
+  table.ledger-print col.col-voucher,
+  table.ledger-print col.col-date,
+  table.ledger-print col.col-account,
+  table.ledger-print col.col-amt,
+  table.ledger-print col.col-bal {
+    width: 1%;
+  }
+  table.ledger-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
