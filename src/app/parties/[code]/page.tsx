@@ -28,7 +28,7 @@ export default async function PartyLedger({
   let running = 0;
 
   return (
-    <div className="container">
+    <div className="container ledger-sheet">
       <PrintHeader org={org} title={`Party Ledger — ${ledger.party.party_name}`} />
 
       <div className="page-head">
@@ -54,12 +54,21 @@ export default async function PartyLedger({
         </p>
       )}
 
-      <div className="card full">
+      <div className="card full ledger-postings">
         <h2>Postings</h2>
         {ledger.rows.length === 0 ? (
           <p className="subtitle">No posted entries for this party.</p>
         ) : (
-          <table>
+          <table className="ledger-print">
+            <colgroup>
+              <col className="col-voucher" />
+              <col className="col-date" />
+              <col className="col-account" />
+              <col className="col-desc" />
+              <col className="col-amt" />
+              <col className="col-amt" />
+              <col className="col-bal" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Voucher</th>
