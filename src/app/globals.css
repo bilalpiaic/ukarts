@@ -410,6 +410,41 @@ tfoot td {
   background: var(--paper-panel-2);
 }
 
+/* Registers, reports, and ledgers: one line per cell so voucher, date,
+   account, description, and balance do not wrap. Editable line grids keep
+   their own widths. */
+table:not(.lines-table) {
+  width: 100%;
+  font-size: 12px;
+}
+
+table:not(.lines-table) th,
+table:not(.lines-table) td {
+  white-space: nowrap;
+  hyphens: none;
+  padding: 4px 8px;
+}
+
+.lines-table th {
+  white-space: nowrap;
+}
+
+/* Read-only voucher lines: description takes the spare width. */
+table.voucher-lines:not(.lines-table) {
+  table-layout: auto;
+}
+
+table.voucher-lines:not(.lines-table) col.col-desc {
+  width: 100%;
+}
+
+table.voucher-lines:not(.lines-table) col.col-line,
+table.voucher-lines:not(.lines-table) col.col-account,
+table.voucher-lines:not(.lines-table) col.col-party,
+table.voucher-lines:not(.lines-table) col.col-amt {
+  width: 1%;
+}
+
 /* -------------------------------------------------------------------------
    Forms
    ------------------------------------------------------------------------- */
@@ -1074,7 +1109,7 @@ tr.ledger-sub td:first-child {
 
 .doc-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 10px 24px;
   margin-bottom: 16px;
 }
@@ -1090,6 +1125,11 @@ tr.ledger-sub td:first-child {
   font-size: 14px;
   color: var(--ink);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.doc-meta > div:last-child .v {
+  white-space: normal;
 }
 
 /* Grouped sidebar sections */
@@ -1413,6 +1453,9 @@ tr.ledger-sub td:first-child {
     gap: 6px 10px;
     margin-bottom: 8px;
   }
+  .doc-meta .v {
+    white-space: normal;
+  }
 
   /* Stack document line rows so each field uses the full width */
   .lines-table thead {
@@ -1547,7 +1590,7 @@ tr.ledger-sub td:first-child {
 
 .print-sheet-meta {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
   gap: 10px 16px;
   margin-bottom: 14px;
 }
@@ -1560,10 +1603,17 @@ tr.ledger-sub td:first-child {
   color: var(--ink-faint);
 }
 
-.print-sheet-meta .v,
+.print-sheet-meta .v {
+  font-weight: 650;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.print-sheet-meta > div:last-child .v,
 .print-sheet-party .v {
   font-weight: 650;
   font-size: 14px;
+  white-space: normal;
 }
 
 .print-sheet-party {
@@ -1790,6 +1840,10 @@ body:has(.print-page) .print-credit {
   button {
     display: none !important;
   }
+  /* Entry forms are omitted from the print; don't leave an empty card behind. */
+  .card:has(> form:only-child) {
+    display: none !important;
+  }
   html,
   body {
     background: #fff;
@@ -1804,10 +1858,25 @@ body:has(.print-page) .print-credit {
     border: 1px solid #bbb;
     background: #fff;
     box-shadow: none;
-    break-inside: avoid;
+    break-inside: auto;
+    overflow: visible;
   }
   table {
     min-width: 0;
+  }
+  table:not(.lines-table) {
+    font-size: 9.5px;
+    line-height: 1.15;
+  }
+  table:not(.lines-table) th,
+  table:not(.lines-table) td {
+    white-space: nowrap;
+    hyphens: none;
+    padding: 2px 4px;
+  }
+  table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   th,
   td {
@@ -1818,7 +1887,20 @@ body:has(.print-page) .print-credit {
   }
   .print-header {
     display: block !important;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
+  }
+  .print-header-logo {
+    width: 52px;
+    height: 52px;
+  }
+  .print-about {
+    margin: 4px 0 2px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .page-title {
+    font-size: 14px;
+    margin: 0 0 4px;
   }
   .print-header.preview {
     border: none;
