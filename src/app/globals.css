@@ -1109,7 +1109,7 @@ tr.ledger-sub td:first-child {
 
 .doc-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(max-content, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 10px 24px;
   margin-bottom: 16px;
 }
@@ -1126,6 +1126,10 @@ tr.ledger-sub td:first-child {
   color: var(--ink);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.doc-meta > div:last-child .v {
+  white-space: normal;
 }
 
 /* Grouped sidebar sections */
@@ -1449,6 +1453,9 @@ tr.ledger-sub td:first-child {
     gap: 6px 10px;
     margin-bottom: 8px;
   }
+  .doc-meta .v {
+    white-space: normal;
+  }
 
   /* Stack document line rows so each field uses the full width */
   .lines-table thead {
@@ -1583,7 +1590,7 @@ tr.ledger-sub td:first-child {
 
 .print-sheet-meta {
   display: grid;
-  grid-template-columns: repeat(4, minmax(max-content, 1fr));
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
   gap: 10px 16px;
   margin-bottom: 14px;
 }
@@ -1596,11 +1603,17 @@ tr.ledger-sub td:first-child {
   color: var(--ink-faint);
 }
 
-.print-sheet-meta .v,
-.print-sheet-party .v {
+.print-sheet-meta .v {
   font-weight: 650;
   font-size: 14px;
   white-space: nowrap;
+}
+
+.print-sheet-meta > div:last-child .v,
+.print-sheet-party .v {
+  font-weight: 650;
+  font-size: 14px;
+  white-space: normal;
 }
 
 .print-sheet-party {
@@ -1856,10 +1869,7 @@ body:has(.print-page) .print-credit {
     line-height: 1.15;
   }
   table:not(.lines-table) th,
-  table:not(.lines-table) td,
-  .print-sheet-meta .v,
-  .print-sheet-party .v,
-  .doc-meta .v {
+  table:not(.lines-table) td {
     white-space: nowrap;
     hyphens: none;
     padding: 2px 4px;
