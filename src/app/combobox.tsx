@@ -14,11 +14,13 @@ export function Combobox({
   value,
   onChange,
   placeholder = "Type to search…",
+  autoFocus = false,
 }: {
   options: Option[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  autoFocus?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [queryText, setQueryText] = useState("");
@@ -126,6 +128,7 @@ export function Combobox({
       <input
         ref={inputRef}
         className="combobox-input"
+        autoFocus={autoFocus}
         value={open ? queryText : selectedLabel}
         placeholder={open ? placeholder : selectedLabel || placeholder}
         onFocus={openList}

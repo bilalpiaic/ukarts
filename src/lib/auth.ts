@@ -2,6 +2,16 @@ import { cookies } from "next/headers";
 import { query } from "./db";
 import { SESSION_COOKIE, verifyToken, type SessionData } from "./session";
 
+/** Active sign-in names for the public login list. No passwords or roles. */
+export async function listSignInUsers() {
+  return query<{ username: string; full_name: string }>(
+    `SELECT username, full_name
+     FROM master.users
+     WHERE status = 'ACTIVE'
+     ORDER BY username`,
+  );
+}
+
 /** Verify username/password against bcrypt hashes stored via pgcrypto. */
 export async function verifyCredentials(
   username: string,
