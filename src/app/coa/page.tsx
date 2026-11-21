@@ -41,7 +41,7 @@ export default async function COA() {
             }))}
           />
         </div>
-        <div className="card">
+        <div className="card full">
           <h2>Chart of Accounts</h2>
           <AdminEntityTable
             kind="account"

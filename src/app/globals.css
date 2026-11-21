@@ -785,6 +785,16 @@ code {
   flex-wrap: wrap;
 }
 
+/* Action buttons in a data row stay beside each other, same as the other columns. */
+td .row-actions {
+  flex-wrap: nowrap;
+  width: max-content;
+}
+
+td .row-actions > button {
+  flex: none;
+}
+
 .attach-field {
   margin: 12px 0 8px;
 }
