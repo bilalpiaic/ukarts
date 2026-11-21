@@ -661,13 +661,33 @@ code {
   position: relative;
 }
 
-.combobox-list {
+.combobox-input {
+  padding-right: 34px;
+}
+
+.combobox-toggle {
   position: absolute;
-  z-index: 30;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 230px;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft);
+  box-shadow: none;
+  line-height: 1;
+}
+
+.combobox-toggle:hover {
+  filter: none;
+  color: var(--ink);
+}
+
+.combobox-list {
+  position: fixed;
+  z-index: 80;
   overflow-y: auto;
   background: #fff;
   border: 1px solid var(--line-strong);

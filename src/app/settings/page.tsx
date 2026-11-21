@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession, isAdmin } from "@/lib/auth";
 import { listUsers } from "@/lib/admin";
+import { USER_ROLE_OPTIONS } from "@/lib/user-roles";
 import { getOrganization } from "@/lib/erp";
 import { ActionForm } from "../action-form";
 import { AdminEntityTable } from "../admin-controls";
@@ -64,12 +65,7 @@ export default async function Settings() {
                 name: "role",
                 label: "Role",
                 type: "select",
-                options: [
-                  { value: "USER", label: "User" },
-                  { value: "ADMIN", label: "Admin" },
-                  { value: "ACCOUNTANT", label: "Accountant" },
-                  { value: "VIEWER", label: "Viewer" },
-                ],
+                options: [...USER_ROLE_OPTIONS],
               },
               { name: "password", label: "Password", type: "password" },
             ]}
