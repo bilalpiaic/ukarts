@@ -18,6 +18,7 @@ const handlers: Record<string, Handler> = {
   "user-create": (b) => admin.createUser(b as never),
   "user-update": (b) => admin.updateUser(b as never),
   "user-delete": (b) => admin.deleteUser(b as never),
+  "user-password": (b) => admin.revealUserPassword({ id: String(b.id ?? "") }),
   "design-create": (b) => admin.createDesign(b as never),
   "design-update": (b) => admin.updateDesign(b as never),
   "design-delete": (b) => admin.deleteDesign(b as never),

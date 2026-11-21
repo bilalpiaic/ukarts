@@ -82,6 +82,7 @@ export function ActionForm({
   );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const disabled =
     busy ||
@@ -150,6 +151,23 @@ export function ActionForm({
               required={f.required ?? true}
               rows={f.rows ?? 5}
             />
+          ) : f.type === "password" ? (
+            <div className="password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={values[f.name]}
+                onChange={(e) => set(f.name, e.target.value)}
+                required={f.required ?? true}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           ) : (
             <input
               type={f.type}
@@ -157,7 +175,6 @@ export function ActionForm({
               value={values[f.name]}
               onChange={(e) => set(f.name, e.target.value)}
               required={f.required ?? true}
-              autoComplete={f.type === "password" ? "new-password" : undefined}
             />
           )}
         </div>
