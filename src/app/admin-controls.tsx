@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { USER_ROLE_OPTIONS } from "@/lib/user-roles";
+import { Combobox } from "./combobox";
 
 async function post(endpoint: string, payload: unknown): Promise<void> {
   const res = await fetch(endpoint, {
@@ -94,7 +96,7 @@ interface Row {
 
 const STATUS_OPTS = ["ACTIVE", "INACTIVE"];
 const ITEM_TYPES = ["GREY_CLOTH", "PROCESSED_CLOTH", "FINISHED_GOOD", "OTHER"];
-const ROLES = ["ADMIN", "USER", "ACCOUNTANT", "INVENTORY_MANAGER", "PRODUCTION_MANAGER", "SALES_USER", "VIEWER"];
+const ROLE_LABEL = Object.fromEntries(USER_ROLE_OPTIONS.map((r) => [r.value, r.label]));
 const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"];
 
 export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
@@ -366,11 +368,13 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                     </td>
                     <td>
                       {isEdit && !passwordOnly ? (
-                        <select value={draft.role ?? ""} onChange={(e) => setDraft({ ...draft, role: e.target.value })}>
-                          {ROLES.map((s) => <option key={s}>{s}</option>)}
-                        </select>
+                        <Combobox
+                          options={[...USER_ROLE_OPTIONS]}
+                          value={draft.role ?? ""}
+                          onChange={(v) => setDraft({ ...draft, role: v })}
+                        />
                       ) : (
-                        row.role
+                        ROLE_LABEL[row.role ?? ""] ?? row.role
                       )}
                     </td>
                     <td>
