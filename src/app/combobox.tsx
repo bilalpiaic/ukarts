@@ -45,8 +45,8 @@ export function Combobox({
     const r = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom - 8;
     const spaceAbove = r.top - 8;
-    const maxHeight = Math.min(230, Math.max(spaceBelow, spaceAbove));
     const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(230, Math.max(0, openUp ? spaceAbove : spaceBelow));
     setBox({
       top: openUp ? Math.max(8, r.top - 4 - maxHeight) : r.bottom + 4,
       left: r.left,
