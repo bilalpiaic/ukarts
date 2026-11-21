@@ -185,6 +185,15 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         if (draft.password) payload.password = draft.password;
       }
       await post(`/api/admin/${kind}-update`, payload);
+      if (kind === "user" && draft.password) {
+        const id = draft.id;
+        setShown((s) => {
+          if (!(id in s)) return s;
+          const next = { ...s };
+          delete next[id];
+          return next;
+        });
+      }
       cancelEdit();
       router.refresh();
     } catch (e) {
