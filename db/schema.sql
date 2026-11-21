@@ -733,6 +733,21 @@ CREATE TABLE IF NOT EXISTS accounting.voucher_sequences (
 -- Additive columns for existing databases (CREATE TABLE IF NOT EXISTS will not alter them)
 ALTER TABLE master.organization ADD COLUMN IF NOT EXISTS about TEXT;
 ALTER TABLE accounting.accounts ADD COLUMN IF NOT EXISTS cash_bank VARCHAR(10);
+-- Admin-only recoverable copy. The login check still uses password_hash.
+ALTER TABLE master.users ADD COLUMN IF NOT EXISTS password_admin BYTEA;
+
+CREATE OR REPLACE FUNCTION master.admin_password_view(enc BYTEA, secret TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF enc IS NULL OR secret IS NULL OR secret = '' THEN
+    RETURN NULL;
+  END IF;
+  RETURN pgp_sym_decrypt(enc, secret);
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (

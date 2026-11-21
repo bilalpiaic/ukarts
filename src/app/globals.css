@@ -631,6 +631,21 @@ input:read-only {
   letter-spacing: 0.12em;
 }
 
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.password-field input {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.password-reveal {
+  white-space: nowrap;
+}
+
 code {
   background: var(--paper-sunk);
   border: 1px solid var(--line);

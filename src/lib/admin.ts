@@ -169,6 +169,10 @@ export async function deleteItem(input: { id: string }) {
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
+function passwordKey() {
+  return process.env.AUTH_SECRET ?? "dev-ukarts-secret-change-me";
+}
+
 export async function listUsers() {
   return query<{
     id: string;
@@ -177,6 +181,16 @@ export async function listUsers() {
     role: string;
     status: string;
   }>(`SELECT id, username, full_name, role, status FROM master.users ORDER BY username`);
+}
+
+/** Admin-only. Returns the password recorded when an admin last set it. */
+export async function revealUserPassword(input: { id: string }) {
+  const rows = await query<{ password: string | null }>(
+    `SELECT master.admin_password_view(password_admin, $2) AS password
+     FROM master.users WHERE id=$1`,
+    [input.id, passwordKey()],
+  );
+  return { password: rows[0]?.password ?? null };
 }
 
 export async function createUser(input: {
@@ -189,9 +203,9 @@ export async function createUser(input: {
     throw new Error("Password must be at least 4 characters.");
   }
   const res = await query<{ id: string }>(
-    `INSERT INTO master.users (username, full_name, role, password_hash)
-     VALUES ($1,$2,$3, crypt($4, gen_salt('bf'))) RETURNING id`,
-    [input.username, input.full_name, input.role, input.password],
+    `INSERT INTO master.users (username, full_name, role, password_hash, password_admin)
+     VALUES ($1,$2,$3, crypt($4, gen_salt('bf')), pgp_sym_encrypt($4, $5)) RETURNING id`,
+    [input.username, input.full_name, input.role, input.password, passwordKey()],
   );
   return { id: res[0].id };
 }
@@ -209,8 +223,10 @@ export async function updateUser(input: {
   if (input.password && input.password.length > 0) {
     await query(
       `UPDATE master.users SET full_name=$1, role=$2, status=COALESCE($3,status),
-         password_hash=crypt($4, gen_salt('bf')), updated_at=NOW() WHERE id=$5`,
-      [input.full_name, input.role, input.status, input.password, input.id],
+         password_hash=crypt($4, gen_salt('bf')),
+         password_admin=pgp_sym_encrypt($4, $6),
+         updated_at=NOW() WHERE id=$5`,
+      [input.full_name, input.role, input.status, input.password, input.id, passwordKey()],
     );
   } else {
     await query(

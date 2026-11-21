@@ -104,16 +104,20 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
   const [draft, setDraft] = useState<Row>({} as Row);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shown, setShown] = useState<Record<string, string | null>>({});
+  const [showDraft, setShowDraft] = useState(false);
 
   function cancelEdit() {
     setEditing(null);
     setPasswordOnly(false);
+    setShowDraft(false);
     setError(null);
   }
 
   function startEdit(row: Row) {
     setEditing(row.id);
     setPasswordOnly(false);
+    setShowDraft(false);
     setDraft({ ...row, password: "" });
     setError(null);
   }
@@ -121,8 +125,31 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
   function startPassword(row: Row) {
     setEditing(row.id);
     setPasswordOnly(true);
+    setShowDraft(false);
     setDraft({ ...row, password: "" });
     setError(null);
+  }
+
+  async function revealPassword(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/user-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = (await res.json()) as { error?: string; password?: string | null };
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      setShown((s) => ({
+        ...s,
+        [id]: typeof data.password === "string" && data.password.length > 0 ? data.password : null,
+      }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function save() {
@@ -158,6 +185,15 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         if (draft.password) payload.password = draft.password;
       }
       await post(`/api/admin/${kind}-update`, payload);
+      if (kind === "user" && draft.password) {
+        const id = draft.id;
+        setShown((s) => {
+          if (!(id in s)) return s;
+          const next = { ...s };
+          delete next[id];
+          return next;
+        });
+      }
       cancelEdit();
       router.refresh();
     } catch (e) {
@@ -185,7 +221,9 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
         <thead>
           <tr>
             {headers.map((h) => (
-              <th key={h}>{h}</th>
+              <th key={h} className={h === "Password" ? "no-print" : undefined}>
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
@@ -344,17 +382,55 @@ export function AdminEntityTable({ kind, rows }: { kind: Kind; rows: Row[] }) {
                         row.status
                       )}
                     </td>
-                    <td>
+                    <td className="no-print">
                       {isEdit ? (
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder={passwordOnly ? "New password" : "New password (optional)"}
-                          value={draft.password ?? ""}
-                          onChange={(e) => setDraft({ ...draft, password: e.target.value })}
-                        />
+                        <div className="password-field">
+                          <input
+                            type={showDraft ? "text" : "password"}
+                            autoComplete="new-password"
+                            placeholder={passwordOnly ? "New password" : "New password (optional)"}
+                            value={draft.password ?? ""}
+                            onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => setShowDraft((v) => !v)}
+                          >
+                            {showDraft ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      ) : shown[row.id] !== undefined ? (
+                        <div className="password-field">
+                          <span className="password-reveal">
+                            {shown[row.id] ?? "Not on file"}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() =>
+                              setShown((s) => {
+                                const next = { ...s };
+                                delete next[row.id];
+                                return next;
+                              })
+                            }
+                          >
+                            Hide
+                          </button>
+                        </div>
                       ) : (
-                        <span className="password-mask">••••••••</span>
+                        <div className="password-field">
+                          <span className="password-mask">••••••••</span>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            disabled={busy}
+                            onClick={() => revealPassword(row.id)}
+                          >
+                            Show
+                          </button>
+                        </div>
                       )}
                     </td>
                   </>

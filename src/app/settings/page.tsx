@@ -75,14 +75,14 @@ export default async function Settings() {
             ]}
           />
         </div>
-        <div className="card">
-          <h2>Login accounts</h2>
-          <p className="subtitle">
-            Usernames and password changes are managed here. Stored passwords are
-            hashed and cannot be read back. Use <strong>Change password</strong> to
-            set or reset access. This information is never shown on the public
-            sign-in page.
-          </p>
+      <div className="card full">
+        <h2>Login accounts</h2>
+        <p className="subtitle">
+          Usernames and password changes are managed here. <strong>Show</strong> is
+          available to admins on this page only, for a password set or reset here.
+          Older passwords are not on file until you set them again. Passwords are
+          never shown on the public sign-in page.
+        </p>
           {users.length === 0 ? (
             <p className="subtitle">No users yet.</p>
           ) : (
