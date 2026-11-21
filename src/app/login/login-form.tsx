@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Combobox, type Option } from "../combobox";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, users }: { next: string; users: Option[] }) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +13,10 @@ export function LoginForm({ next }: { next: string }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!username) {
+      setError("Choose your username from the list.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -35,11 +40,11 @@ export function LoginForm({ next }: { next: string }) {
     <form onSubmit={submit}>
       <div className="form-row">
         <label>Username</label>
-        <input
+        <Combobox
+          options={users}
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-          required
+          onChange={setUsername}
+          placeholder="Choose your username"
           autoFocus
         />
       </div>
@@ -53,7 +58,7 @@ export function LoginForm({ next }: { next: string }) {
           required
         />
       </div>
-      <button type="submit" disabled={busy} style={{ width: "100%" }}>
+      <button type="submit" disabled={busy || !username} style={{ width: "100%" }}>
         {busy ? "Signing in…" : "Sign in"}
       </button>
       {error && <div className="msg err">{error}</div>}
